@@ -1,0 +1,278 @@
+From 381d2dfd18bd19c8f8a903f8b033ae9445be2e84 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:58:13 +0200
+Subject: [RFC PATCH v1 07/14] ram: rockchip: add RK3576 DRAM platform header
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add sdram_rk3576.h with top-level data structures and platform defines
+for the RK3576 DDR subsystem:
+
+  - Physical base addresses for DDRCTL0/1, DDRPHY0/1, DDR_GRF,
+    PMU1GRF, CRU, DDR0/1CRU (TRM Part 1, Table 1-1)
+  - DDR sub-CRU clock-select register offsets and mux bits
+  - PMU1GRF OS_REG2/3 offsets for trained geometry storage
+  - DDR_GRF register offsets (PHY clock gate, LPDDR5 CS toggle,
+    dfi_init_complete mux) with write-mask convention notes
+  - SR_IDLE / PD_IDLE conservative defaults
+  - struct rk3576_ddrctl_freq_params  — 43-field per-frequency block
+  - struct rk3576_ddrctl_global_params — 16-field static DDRCTL block
+  - struct rk3576_sdram_channel       — per-channel cap_info wrapper
+  - struct rk3576_sdram_params        — top-level timing-table type
+
+DRAM type codes (LPDDR4=7, LPDDR4X=8, LPDDR5=9) are inherited from
+sdram.h via the new #include; no conflicting local defines.
+
+TRM Part 2 §7.3.1 / §7.6.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ .../include/asm/arch-rockchip/sdram_rk3576.h  | 235 ++++++++++++++++++
+ 1 file changed, 235 insertions(+)
+ create mode 100644 arch/arm/include/asm/arch-rockchip/sdram_rk3576.h
+
+diff --git a/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h b/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h
+new file mode 100644
+index 00000000000..bdeaf9b3c38
+--- /dev/null
++++ b/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h
+@@ -0,0 +1,235 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * RK3576 DRAM init — top-level data structures and platform defines.
++ *
++ * The RK3576 DDR subsystem consists of two independent channels, each
++ * containing one uMCTL2 DDRCTL and one LPDDR4/4X/5 combo PHY (DDRPHY).
++ * Supported types: LPDDR4, LPDDR4X, LPDDR5 (TRM Part 2 §7.1).
++ * This file defines:
++ *   - DDRPLL and DDR_CRU registers (clock setup)
++ *   - PMU1GRF OS_REG layout (trained parameter storage)
++ *   - DDR_GRF register offsets (clock gate, CS toggle, DFI mux)
++ *   - DRAM type codes
++ *   - Per-frequency timing parameter struct (for .inc timing tables)
++ *   - OF_PLATDATA struct for the DMC device tree node
++ *   - Per-channel capacity info and top-level sdram_params
++ */
++
++#ifndef _ASM_ARCH_SDRAM_RK3576_H
++#define _ASM_ARCH_SDRAM_RK3576_H
++
++#include <asm/arch-rockchip/sdram.h>
++#include <asm/arch-rockchip/sdram_common.h>
++#include <asm/arch-rockchip/sdram_pctl_rk3576.h>
++#include <asm/arch-rockchip/sdram_phy_rk3576.h>
++
++/* -----------------------------------------------------------------------
++ * Physical base addresses (TRM Part 1, Table 1-1)
++ * -----------------------------------------------------------------------
++ */
++
++#define RK3576_DDRCTL0_BASE		0x28000000
++#define RK3576_DDRCTL1_BASE		0x29000000
++#define RK3576_DDRPHY0_BASE		0x2A020000
++#define RK3576_DDRPHY1_BASE		0x2A030000
++#define RK3576_DDR_GRF_BASE		0x26012000
++#define RK3576_PMU1GRF_BASE		0x26026000
++#define RK3576_CRU_BASE			0x27200000
++/* DDR sub-CRUs (TRM Part 1) */
++#define RK3576_DDR0CRU_BASE		0x27210000
++#define RK3576_DDR1CRU_BASE		0x27220000
++
++/* -----------------------------------------------------------------------
++ * DDR clock mux registers (TRM Part 1 CRU chapter)
++ * DDR0CRU_CLKSEL_CON00[0]: 0=D0APLL (default 24 MHz), 1=D0BPLL (target freq)
++ * DDR1CRU_CLKSEL_CON00[0]: same for channel 1
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRCRU_CLKSEL_CON00		0x0100
++#define DDRCRU_CLKSEL_D0BPLL		BIT(0)
++#define DDRCRU_CLKSEL_D0APLL		0
++
++/* -----------------------------------------------------------------------
++ * PMU1GRF OS_REG — stores trained DRAM geometry for SPL + Linux
++ * PMU1GRF base 0x26026000; OS_REG2 at +0x208 (TRM Part 1)
++ * Layout matches the common Rockchip sys_reg format (sdram_common.h).
++ * -----------------------------------------------------------------------
++ */
++
++#define RK3576_PMUGRF_OS_REG2		0x208
++#define RK3576_PMUGRF_OS_REG3		0x20C
++
++/* -----------------------------------------------------------------------
++ * DDR_GRF registers (base 0x26012000, TRM Part 2 §7.3.1 / app notes §7.6)
++ *
++ * DDR_GRF is distinct from SYS_GRF; it controls:
++ *   - PHY 2x clock gate enable
++ *   - LPDDR5 CS toggle
++ *   - dfi_init_complete mux source
++ * Registers use the Rockchip write-mask convention: bits[31:16] are the
++ * write-enable masks for bits[15:0].
++ * -----------------------------------------------------------------------
++ */
++
++/* Channel A (ch0) PHY clock gate */
++#define DDR_GRF_CHA_PHY_CON0		0x0000
++#define DDR_GRF_CHA_PHY_CON1		0x0004
++/* Channel B (ch1) PHY clock gate */
++#define DDR_GRF_CHB_PHY_CON0		0x0100
++#define DDR_GRF_CHB_PHY_CON1		0x0104
++
++/* PHY 2x clock gate enable bit within CHA/CHB_PHY_CON0 and CON1 */
++#define PHY_CON_DDRPHY2XCLKGATE_EN	BIT(3)
++
++/* LPDDR5 CS toggle control (DDR_GRF_CHA/CHB_CON2[7:0]) */
++#define DDR_GRF_CHA_CON2		0x0008
++#define DDR_GRF_CHB_CON2		0x0108
++#define CON2_LP5_CS_TOGGLE_MASK		GENMASK(7, 0)
++
++/* dfi_init_complete source mux (GRF_CHA/CHB_DDRPHY_CON0[5:4]) */
++#define GRF_CHA_DDRPHY_CON0		0x0020
++#define GRF_CHB_DDRPHY_CON0		0x0120
++#define DDRPHY_CON0_DFI_INIT_COMP_SEL_MASK	GENMASK(5, 4)
++#define DDRPHY_CON0_DFI_INIT_COMP_FROM_PHY	(0x1 << 4)
++
++/* Number of FREQ sets supported by DDRCTL */
++#define RK3576_DDRCTL_NFREQS		4
++
++/* -----------------------------------------------------------------------
++ * Per-frequency timing parameter block.
++ * One instance per FREQ set per channel.  The .inc timing table files
++ * initialise arrays of this struct.
++ *
++ * Register names match the DDRCTL_* defines in sdram_pctl_rk3576.h.
++ * The FREQ bank base address is DDRCTL_FREQ_BASE(freq_idx).
++ * -----------------------------------------------------------------------
++ */
++
++struct rk3576_ddrctl_freq_params {
++	/* Timing set 1 (TRM p.591) */
++	u32 dramset1tmg0;
++	u32 dramset1tmg1;
++	u32 dramset1tmg2;
++	u32 dramset1tmg3;
++	u32 dramset1tmg4;
++	u32 dramset1tmg5;
++	u32 dramset1tmg6;
++	u32 dramset1tmg7;
++	u32 dramset1tmg8;
++	u32 dramset1tmg9;
++	u32 dramset1tmg12;
++	u32 dramset1tmg13;
++	u32 dramset1tmg14;
++	u32 dramset1tmg23;
++	u32 dramset1tmg24;
++	u32 dramset1tmg25;
++	u32 dramset1tmg30;
++
++	/* MR initialization values */
++	u32 initmr0;
++	u32 initmr1;
++	u32 initmr2;
++	u32 initmr3;
++
++	/* DFI timing */
++	u32 dfitmg0;
++	u32 dfitmg1;
++	u32 dfitmg2;
++	u32 dfitmg4;
++	u32 dfitmg5;
++	u32 dfilptmg0;
++	u32 dfilptmg1;
++	u32 dfiupdtmg0;
++	u32 dfiupdtmg1;
++	u32 dfimsgtmg0;
++
++	/* Refresh timing */
++	u32 rfshset1tmg0;
++	u32 rfshset1tmg1;
++	u32 rfshset1tmg2;
++	u32 rfshset1tmg4;
++
++	/* ZQ timing */
++	u32 zqset1tmg0;
++	u32 zqset1tmg1;
++
++	/* Scheduler */
++	u32 perfhpr1;
++	u32 perflpr1;
++	u32 perfwr1;
++	u32 ranktmg0;
++	u32 ranktmg1;
++	u32 pwrtmg;
++};
++
++/* -----------------------------------------------------------------------
++ * Global DDRCTL static parameters (programmed once during init).
++ * These values go into the global register section (0x10000+) of DDRCTL.
++ * -----------------------------------------------------------------------
++ */
++
++struct rk3576_ddrctl_global_params {
++	u32 mstr0;
++	u32 rankctl;
++	u32 dbictl;
++	u32 odtmap;
++	u32 inittmg0;
++	u32 inittmg1;
++	u32 rfshmod0;
++	u32 sched0;
++	u32 sched1;
++	u32 sched3;
++	u32 sched4;
++	u32 dfilpcfg0;
++	u32 dfiupd0;
++	u32 dfiphymstr;
++	u32 zqctl0;
++	u32 zqctl1;
++};
++
++/* -----------------------------------------------------------------------
++ * Per-channel DRAM geometry detected at run-time.
++ * Stored in PMU1GRF OS_REG2/3 for SPL and Linux to consume.
++ * -----------------------------------------------------------------------
++ */
++
++struct rk3576_sdram_channel {
++	struct sdram_cap_info cap_info;
++};
++
++/* -----------------------------------------------------------------------
++ * Top-level sdram_params struct — one per supported board configuration.
++ * Timing table .inc files declare const arrays of this type.
++ * -----------------------------------------------------------------------
++ */
++
++struct rk3576_sdram_params {
++	struct rk3576_sdram_channel ch[2];  /* channel 0 and 1 */
++	struct sdram_base_params base;
++	/* Per-frequency timing for each FREQ set */
++	struct rk3576_ddrctl_freq_params freq[RK3576_DDRCTL_NFREQS];
++	/* Global static DDRCTL parameters */
++	struct rk3576_ddrctl_global_params ctl;
++};
++
++/*
++ * OF_PLATDATA note: dtoc auto-generates struct dtd_rockchip_rk3576_dmc
++ * into dt-plat.h from the DMC DT node (compatible "rockchip,rk3576-dmc").
++ * The driver includes dt-plat.h and accesses:
++ *   dtplat->reg[0..3]  — ddrctl0, ddrctl1, ddrphy0, ddrphy1 base addresses
++ * Do not define dtd_rockchip_rk3576_dmc here; dtoc owns that struct.
++ */
++
++/* -----------------------------------------------------------------------
++ * Self-refresh idle and power-down idle (ticks of 32-cycle counter).
++ * These are conservative defaults; runtime PM can tune them.
++ * -----------------------------------------------------------------------
++ */
++
++#define SR_IDLE				93
++#define PD_IDLE				13
++
++int sdram_init(void);
++
++#endif /* _ASM_ARCH_SDRAM_RK3576_H */
+-- 
+2.45.1.windows.1
+

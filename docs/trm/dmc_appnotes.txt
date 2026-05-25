@@ -1,0 +1,779 @@
+RK3576 TRM (Part 2)
+
+LP4_CSN0_B/LP4X_CSN0_B LP4_CSN1_B/LP4X_CSN1_B LP4_A0_B/LP4x_A0_B/LP5_A0_B LP4_A1_B/LP4x_A1_B/LP5_A1_B LP4_A2_B/LP4x_A2_B/LP5_A2_B LP4_A3_B/LP4x_A3_B/LP5_A3_B LP4_A4_B/LP4x_A4_B/LP5_A4_B LP4_A5_B/LP4x_A5_B/LP5_A5_B LP5_A6_B LP4_DQS0P_B/LP4x_DQS0P_B/LP5_RDQS0P_B LP4_DQS0N_B/LP4x_DQS0N_B/LP5_RDQS0N_B LP4_DQS1P_B/LP4x_DQS1P_B/LP5_RDQS1P_B LP4_DQS1N_B/LP4x_DQS1N_B/LP5_RDQS1N_B LP5_WCK0P_B
+LP5_WCK0N_B
+LP5_WCK1P_B
+LP5_WCK1N_B
+LP4_DMI0_B/LP4x_DMI0_B/LP5_DMI0_B
+LP4_DMI1_B/LP4x_DMI1_B/LP5_DMI1_B LP4_DQi_B/LP4x_DQi_B/LP5_DQi_B (i=0~15) ZQ_B
+
+rank1 of LPDDR4/4X and acts as chip select signal for rank1 of LPDDR5. Chip select signal for rank0. Only used for LPDDR4/4X. Chip select signal for rank1. Only used for LPDDR4/4X Command and address signal bit0 for LPDDR4/4X and LPDDR5 Command and address signal bit1 for LPDDR4/4X and LPDDR5 Command and address signal bit2 for LPDDR4/4X and LPDDR5 Command and address signal bit3 for LPDDR4/4X and LPDDR5 Command and address signal bit4 for LPDDR4/4X and LPDDR5 Command and address signal bit5 for LPDDR4/4X and LPDDR5 Command and address signal bit6 for LPDDR5,not used for LPDDR4/4X Positive DQS for DQ[7:0] Negative DQS for DQ[7:0] Positive DQS for DQ[15:8] Negative DQS for DQ[15:8] Positive differential clock used for WRITE data capture and READ data output for LPDDR5. It corresponds to DQ[7:0]. Negative differential clock used for WRITE data capture and READ data output for LPDDR5. It corresponds to DQ[7:0]. Positive differential clock used for WRITE data capture and READ data output for LPDDR5. It corresponds to DQ[15:8]. Negative differential clock used for WRITE data capture and READ data output for LPDDR5. It corresponds to DQ[15:8]. This signal achieves multiple function such as Data Mask (DM) and Data Bus Inversion (DBI) by setting the Mode Register and it is a bi-directional signal and each byte of data has a DMI signal. This signal corresponds to DQ[7:0]. This signal corresponds to DQ[15:8]. Bidirectional data bus Used to calibrate the output drive strength and the termination resistance as calibration reference.
+
+7.6 Application Notes
+
+7.6.1 Quasi Dynamic Registers of DDRCTL
+In addition to the dynamic registers, there are 4 categories of registers can be written after
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1069
+
+RK3576 TRM (Part 2)
+
+reset. These 4 kinds of registers are divided into group 1, group 2, group 3 and group 4.
+
+Each category requires specific conditions for the registers to be programmed. Once the
+
+programming conditions are met, DDRCTL_SWCTL.sw_done register must be programmed
+
+to 1'b0 to enable the software programming. Once the programming is completed,
+
+DDRCTL_SWCTL.sw_done must be set to 1'b1 and DDRCTL_SWSTAT.sw_done_ack must be
+
+read as 1'b1. This is to ensure that quasi dynamic registers are propagated correctly to the
+
+destination clocks. The protocol flowchart is shown below.
+
+Group 1
+
+Group 2
+
+Group 3
+
+Group 4
+
+dis_dq=1
+No Pipeline empty
+Yes
+
+selfref_sw=1
+No Self refresh
+Yes
+
+port_en=0 and dis_hif=1
+No DDRCTL Empty
+Yes
+
+sw_done=0
+No sw_done_ack==0?
+
+Program registers
+
+sw_done=1
+
+No sw_done_ack==1?
+
+Group 1 dis_dq=1
+
+Group 2 selfref_sw=1
+
+Group 3
+port_en=0 and dis_hif=1
+
+Group 4
+
+Fig. 7-5 Quasi dynamic registers program flow of DDRCTL Group 1 refers to registers that can be written when no read/write traffic is present at the DFI. By setting DDRCTL_OPCTRL1.dis_dq register and polling DDRCTL_OPCTRLCAM.wr_data_pipeline_empty and DDRCTL_OPCTRLCAM.rd_data_pipeline_empty1, it is possible to prevent any read or write traffic from being sent on the DFI. In this mode, it is safe to write to the group 1 registers. Re-enable the traffic by writing DDRCTL_OPCTRL1.dis_dq to 1'b0. Group 2 refers to registers that can be written in self-refresh mode. When the DDRCTL has entered self-refresh mode through software (DDRCTL_PWRCTL.selfref_sw), the DFI bus is idle until software exits self-refresh. In this mode, it is safe to write the group 2 registers. Re-enable the traffic by writing DDRCTL_PWRCTL.selfref_sw to 1'b0 and polling DDRCTL_STAT.operating_mode. Group 3 refers to registers that can be written when controller is empty. For multi-port configurations, DDRCTL_PORTi_PCTRL.port_en(i=0~4) is used to enable or disable the input traffic per port. The controller idleness can be polled first from DDRCTL_PORTi_PSTAT register (wr_port_busy_n and rd_port_busy_n bit fields) and should read as DDRCTL_PORTi_PSTAT==32'b0 (not busy). DDRCTL_OPCTRL1.dis_hif is used to enable or disable the input traffic to the controller. Then, DDRCTL CAM/pipeline empty status must be polled ((DDRCTL_OPCTRLCAM.dbg_wr_q_empty== 1'b1) &&
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1070
+
+RK3576 TRM (Part 2)
+(DDRCTL_OPCTRLCAM.dbg_rd_q_empty== 1'b1) && (DDRCTL_OPCTRLCAM.wr_data_pipeline_empty== 1'b1) && (DDRCTL_OPCTRLCAM.rd_data_pipeline_empty==1'b1)). In this mode, it is safe to write the group 3 registers. Group 4 refers to registers that can be written depending on DDRCTL_MSTR2.target_frequency. It is safe to write the registers in the other blocks other than the one is working. For example, it is safe to write registers in REGB_FREQ0, REGB_FREQ2 and REGB_FREQ3 when DDRCTL_MSTR2.target_frequency is equal to '1'.
+7.6.2 2-channel Interleaving LPDDR4/4X Initialization
+Following steps are for 2-channel interleaving LPDDR4/4X initialization. 1. Power up DDRPHY core supply (DDRPHY_DVDD), power up CKE power (DDRPHY_CKE_VDDQ) and then power up IO supply (DDRPHY_CK_VDDQ and DDRPHY_VDDQ). 2. Keep DDRPLL (D0APLL and D1APLL) at default configuration to output 24MHz frequency. Configure DDRPLL (D0BPLL and D1BPLL) to lock at target operation frequency. Now by default the input clk_phy2x of DDRPHY is 24MHz. Make sure that PCLK frequency of DDRPHY is not higher than clk_dfi which is generated from clk_phy2x. 3. De-assert PRESETn of DDRPHY and present of DDRCTL. 4. De-assert RESETn of DDRPHY. Wait for at least 10 cycles of clk_phy2x. 5. Set DDR_GRF_CHA/CHB_PHY_CON0[3](CHA/CHB registers are used to control DDR channel 0/1 respectively) and DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b1 to enable DDRPHY2XCLKGATE_ENABLE of each DDRPHY. Wait for at least 10 cycles of clk_phy2x. 6. De-assert div_rst_n of DDRPHY. Wait for at least 10 cycles of clk_phy2x. 7. Assert core_ddrc_rstn and aresetn_i(i=0~4)of DDRCTL. 8. De-assert rst_n of DDRPHY. Make sure that rst_n is released at 24MHz low frequency. 9. Set DDR_GRF_CHA/CHB_PHY_CON0[3] and DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b0 to disable DDRPHY2XCLKGATE_ENABLE of each DDRPHY. 10. Assert div_rst_n of DDRPHY. 11. Set DDRPHY registers to select memory type and clock mode.
+ DDRPHY_GNR_CON0.ctrl_ddr_mode='h0  DDRPHY_CLKMODE_CON.ctrl_phy_mode='h1  DDRPHY_CLKMODE_CON.ctrl_phy_clk_2x='h1 12. De-assert div_rst_n of DDRPHY. 13. Executes step 5 again to enable the output clk_dfi of DDRPHY. Clk_dfi is used as the source clock of DDRCTL. It is connected to the core_ddrc_core_clk, aclk_i(i=0~4) and bsm_clk of DDRCTL. 14. De-assert presetn of DDRCTL. 15. Set DDRCTL registers. 16. De-assert core_ddrc_rstn and aresetn_i(i=0~4) of DDRCTL. 17. Disable auto-refreshes, self-refresh, power down and assertion of dfi_dram_clk_disable by setting DDRCTL_RFSHCTL0.dis_auto_refresh = 1, DDRCTL_PWRCTL.powerdown_en = 0 and DDRCTL_PWRCTL.selfref_en = 0, DDRCTL_PWRTL.en_dfi_dram_clk_disable = 0. 18. Set DDRCTL_SWCTL.sw_done to 1'b0. 19. Set DDRCTL_DFIMISC.dfi_init_complete_en to 1'b0. 20. Set DDRCTL_SWCTL.sw_done to 1'b1. 21. Set DDRCTL_PORTi_PCTRL.port_en(i=0~4) to 1'b1 to enable AXI port 0~4 of DDRCTL. 22. Begin to set DDRPHY registers. Such as read latency, write latency and burst length and so on. 23. Apply DDRPHY IO settings before ZQ calibration. 24. Start DFI initialization  Set DDRPHY_MDLL_CON0.ctrl_dll_on=1'b0  DDRCTL should assert dfi_init_start from low to high  DDRCTL should wait dfi_init_complete change from low to high 25. Set DDRCTL_SWCTL.sw_done to 1'b0. Set DDRCTL_DFIMISC.dfi_init_start to 1'b0 and DDRCTL_DFIMISC.dfi_init_complete_en to 1'b1. Set DDRCTL_SWCTL.sw_done to 1'b1. 26. Wait for DDRCTL to move to normal operating mode by monitoring
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1071
+
+RK3576 TRM (Part 2)
+DDRCTL_STAT.operating_mode register. 27. DDRPHY vref related registers settings without vref training. 28. DDRPHY ODT related registers settings. 29. Start DDRPHY ZQ calibration.
+ Enable DDRPHY_ZQ_CON0.zq_clk_div_en  Enable DDRPHY_ZQ_CON0.zq_manual_str  Wait until DDRPHY_ZQ_CON1.zq_done is enabled  Disable DDRPHY_ZQ_CON0.zq_manual_str  Disable DDRPHY_ZQ_CON0.zq_clk_div_en 30. Frequency change to the target operation speed. Using frequency change protocol via MC-PHY handshake.  Set DDRCTL_SWCTL.sw_done to 1'b0.  Set DDRCTL_DFIMISC.dfi_init_complete_en to 1'b0.  Set DDRCTL_DFIMISC.dfi_init_start to 1'b1. Set DDRCTL_SWCTL.sw_done to 1'b1.  Poll DDRCTL_DFISTAT.dfi_init_complete=1'b0.  Programming DDR_GRF_CHA/CHB_PHY_CON0[3] and
+DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b0 to disable DDRPHY2XCLKGATE_ENABLE of each DDRPHY.  Assert div_rst_n of DDRPHY if LPDDR5 is used. If LP4/4X is used, don't assert div_rst_n.  Change clk_phy2x frequency of DDRPHY channel 0 by setting DDR0CRU_CLKSEL_CON00[0] to 1'b1 to select D0BPLL, set DDR1CRU_CLKSEL_CON00[0] to 1'b1 to select D1BPLL output clock as DDRPHY channel 1 driving clock.  Change PCLK of DDRPHY to high frequency such as 200MHz.  De-assert div_rst_n of DDRPHY if LPDDR5 is used. If LP4/4X is used, skip this flow.  Set DDR_GRF_CHA/CHB_PHY_CON0[3] and DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b1 to enable DDRPHY2XCLKGATE_ENABLE of each DDRPHY.  Set DDRCTL_SWCTL.sw_done to 1'b0. Set DDRCTL_DFIMISC.dfi_init_start to 1'b0. Set DDRCTL_SWCTL.sw_done to 1'b1.  Poll DDRCTL_DFISTAT.dfi_init_complete=1'b1.  Set DDRCTL_SWCTL.sw_done to 1'b0.  Set DDRCTL_DFIMISC.dfi_init_complete_en to 1'b1 to indicate to the controller that the DDRPHY has finished frequency change.  Set DDRCTL_SWCTL.sw_done to 1'b1. 31. Set GRF_CHA/CHB_DDRPHY_CON0[5] and GRF_CHA/CHB_DDRPHY_CON1[5] to 1'b1, then set GRF_CHA/CHB_DDRPHY_CON0[4] and GRF_CHA/CHB_DDRPHY_CON1[4] to 1'b1 to select DDRCTL's dfi_init_complete driven by DDR_GRF. This step is necessary because the following DDRPHY_MDLL_CON0.ctrl_dll_on=1 will pull dfi_init_complete low, which will cause DDRCTL abnormal. 32. Turn on DDRPHY master DLL by setting DDRPHY_MDLL_CON0.ctrl_dll_on=1'b1. 33. Start DDRPHY master DLL locking by enable DDRPHY_MDLL_CON0.ctrl_start  Set DDRPHY_MDLL_CON0.ctrl_start to 1'b0.  Set DDRPHY_MDLL_CON0.ctrl_start to 1'b1.  Wait until DDRPHY_MDLL_CON1.ctrl_locked=1'b1. 34. Set GRF_CHA/CHB_DDRPHY_CON0[4] and GRF_CHA/CHB_DDRPHY_CON1[4] back to 1'b0. 35. DDRPHY SFR settings. Set DDRPHY_LP_CON0.ctrl_scheduler_en to 1'b1 and other registers if necessary. 36. Start DDRPHY initial read and write training. Please refer to the following section for LPDDR4/4X training procedure. 37. DDRPHY SFR settings that should be set after training such as following registers and so on.  Set DDRPHY_MDLL_CON0.clkm_cg_en_sw to 1'b0.  Set DDRPHY_CAL_CON0.cal_vtc_en to 1'b1.  Set DDRPHY_CAL_CON5.wrtrn_cycle_mode=0 during normal operation.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1072
+
+RK3576 TRM (Part 2)
+7.6.3 2-channel Interleaving LPDDR5 Initialization
+Following steps are for 2-channel interleaving LPDDR5 initialization. 1. Power up DDRPHY core supply (DDRPHY_DVDD), power up CKE power (DDRPHY_CKE_VDDQ) and then power up IO supply (DDRPHY_CK_VDDQ and DDRPHY_VDDQ). 2. Keep DDRPLL (D0APLL and D1APLL) at default configuration to output 24MHz frequency. Configure DDRPLL (D0BPLL and D1BPLL) to lock at target operation frequency. Now by default the input clk_phy2x of DDRPHY is 24MHz. Make sure that PCLK frequency of DDRPHY is not higher than clk_dfi which is generated from clk_phy2x. 3. De-assert PRESETn of DDRPHY and present of DDRCTL. 4. De-assert RESETn of DDRPHY. Wait for at least 10 cycles of clk_phy2x. 5. Set DDR_GRF_CHA/CHB_PHY_CON0[3] and DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b1 to enable DDRPHY2XCLKGATE_ENABLE of each DDRPHY. Wait for at least 10 cycles of clk_phy2x. 6. De-assert div_rst_n of DDRPHY. Wait for at least 10 cycles of clk_phy2x. 7. Assert core_ddrc_rstn and aresetn_i(i=0~4)of DDRCTL. 8. De-assert rst_n of DDRPHY. Make sure that rst_n is released at 24MHz low frequency. 9. Set DDR_GRF_CHA/CHB_PHY_CON0[3] and DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b0 to disable DDRPHY2XCLKGATE_ENABLE of each DDRPHY. 10. Assert div_rst_n of DDRPHY. 11. Set DDRPHY registers to select memory type and clock mode. Following configuration are for 1:1:4 mode (CLK_DFI: CK: WCK).
+ DDRPHY_GNR_CON0.ctrl_ddr_mode='h2  DDRPHY_CLKMODE_CON.ctrl_phy_mode='h4  DDRPHY_CLKMODE_CON.ctrl_phy_clk_2x='h1 If CLK_DFI: CK: WCK is 1:1:2, following configuration should be followed.  DDRPHY_GNR_CON0.ctrl_ddr_mode='h2  DDRPHY_CLKMODE_CON.ctrl_phy_mode='h2  DDRPHY_CLKMODE_CON.ctrl_phy_clk_2x='h1 12. De-assert div_rst_n of DDRPHY. 13. Excutes step 5 again to enable the output clk_dfi of DDRPHY. Clk_dfi is used as the source clock of DDRCTL. It is connected to the core_ddrc_core_clk, aclk_i(i=0~4) and bsm_clk of DDRCTL. 14. De-assert presetn of DDRCTL. 15. Set DDRCTL registers. 16. De-assert core_ddrc_rstn and aresetn_i(i=0~4) of DDRCTL. 17. Disable auto-refreshes, self-refresh, power down and assertion of dfi_dram_clk_disable by setting DDRCTL_RFSHCTL0.dis_auto_refresh = 1, DDRCTL_PWRCTL.powerdown_en = 0 and DDRCTL_PWRCTL.selfref_en = 0, DDRCTL_PWRTL.en_dfi_dram_clk_disable = 0. 18. Set DDRCTL_SWCTL.sw_done to 1'b0. 19. Set DDRCTL_DFIMISC.dfi_init_complete_en to 1'b0. 20. Set DDRCTL_SWCTL.sw_done to 1'b1. 21. Set DDRCTL_PORTi_PCTRL.port_en(i=0~4) to 1'b1 to enable AXI port 0~4 of DDRCTL. 22. Begin to set DDRPHY registers. Such as read latency, write latency and burst length and so on. 23. Apply DDRPHY IO settings before ZQ calibration. 24. DDRPHY DLL lock value force and update for low frequency initialization under 100MHz.  Set DDRPHY_MDLL_CON0.ctrl_force=11'h2ef.  Set DDRPHY_MDLL_CON0.ctrl_dll_on=1'b0. 25. Start DFI initialization  Set DDRPHY_MDLL_CON0.ctrl_dll_on=1'b0  DDRCTL should assert dfi_init_start from low to high  DDRCTL should wait dfi_init_complete change from low to high 26. Set DDRCTL_MRCTRL0=32'h8 to enable software intervention allowed before SDRAM automatic initialization. 27. Set DDRCTL_SWCTL.sw_done to 1'b0. Set DDRCTL_DFIMISC.dfi_init_start to 1'b0 and DDRCTL_DFIMISC.dfi_init_complete_en to 1'b1. Set DDRCTL_SWCTL.sw_done to 1'b1.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1073
+
+RK3576 TRM (Part 2)
+28. Delay an appropriate period of time according to the DDRCTL_INITTMG1.dram_rstn_x1024 to issue power down exit asynchronously by programming following registers. Set DDR_GRF_CHA_CON2[7:0] and DDR_GRF_CHB_CON2[7:0] of DDR_GRF to 8'hff to toggle LPDDR5 chip select signal(CS) from 1'b0 to 1'b1. Set DDR_GRF_CHA_CON2[7:0] and DDR_GRF_CHB_CON2[7:0] of DDR_GRF to 8'h00 to toggle LPDDR5 chip select signal(CS) from 1'b1 to 1'b0. 29. Start memory initialization by DDRCTL by sending MRW command. 30. Wait for DDRCTL to move to normal operating mode by monitoring DDRCTL_STAT.operating_mode register. 31. DDRPHY vref related registers settings without vref training. 32. DDRPHY ODT related registers settings. 33. Start DDRPHY ZQ calibration.
+ Enable DDRPHY_ZQ_CON0.zq_clk_div_en  Enable DDRPHY_ZQ_CON0.zq_manual_str  Wait until DDRPHY_ZQ_CON1.zq_done is enabled  Disable DDRPHY_ZQ_CON0.zq_manual_str  Disable DDRPHY_ZQ_CON0.zq_clk_div_en 34. Frequency change to the target operation speed. Using frequency change protocol via MC-PHY handshake.  Set DDRCTL_SWCTL.sw_done to 1'b0.  Set DDRCTL_DFIMISC.dfi_init_complete_en to 1'b0.  Set DDRCTL_DFIMISC.dfi_init_start to 1'b1. Set DDRCTL_SWCTL.sw_done to 1'b1.  Poll DDRCTL_DFISTAT.dfi_init_complete=1'b0.  Programming DDR_GRF_CHA/CHB_PHY_CON0[3] and
+DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b0 to disable DDRPHY2XCLKGATE_ENABLE of each DDRPHY.  Assert div_rst_n of DDRPHY if LPDDR5 is used. If LP4/4X is used, don't assert div_rst_n.  Change clk_phy2x frequency of DDRPHY channel 0 by setting DDR0CRU_CLKSEL_CON00[0] to 1'b1 to select D0BPLL, set DDR1CRU_CLKSEL_CON00[0] to 1'b1 to select D1BPLL output clock as DDRPHY channel 1 driving clock.  Change PCLK of DDRPHY to high frequency such as 200MHz.  De-assert div_rst_n of DDRPHY if LPDDR5 is used. If LP4/4X is used, skip this flow.  Set DDR_GRF_CHA/CHB_PHY_CON0[3] and DDR_GRF_CHA/CHB_PHY_CON1[3] of DDR_GRF to 1'b1 to enable DDRPHY2XCLKGATE_ENABLE of each DDRPHY.  Set DDRCTL_SWCTL.sw_done to 1'b0. Set DDRCTL_DFIMISC.dfi_init_start to 1'b0. Set DDRCTL_SWCTL.sw_done to 1'b1.  Poll DDRCTL_DFISTAT.dfi_init_complete=1'b1.  Set DDRCTL_SWCTL.sw_done to 1'b0.  Set DDRCTL_DFIMISC.dfi_init_complete_en to 1'b1 to indicate to the controller that the DDRPHY has finished frequency change.  Set DDRCTL_SWCTL.sw_done to 1'b1. 35. Set GRF_CHA/CHB_DDRPHY_CON0[5] and GRF_CHA/CHB_DDRPHY_CON1[5] to 1'b1, then set GRF_CHA/CHB_DDRPHY_CON0[4] and GRF_CHA/CHB_DDRPHY_CON1[4] to 1'b1 to select DDRCTL's dfi_init_complete driven by DDR_GRF. This step is necessary because the following DDRPHY_MDLL_CON0.ctrl_dll_on=1 will pull dfi_init_complete low, which will cause DDRCTL abnormal. 36. Turn on DDRPHY master DLL by setting DDRPHY_MDLL_CON0.ctrl_dll_on=1'b1. 37. Start DDRPHY master DLL locking by enable DDRPHY_MDLL_CON0.ctrl_start  Set DDRPHY_MDLL_CON0.ctrl_start to 1'b0.  Set DDRPHY_MDLL_CON0.ctrl_start to 1'b1.  Wait until DDRPHY_MDLL_CON1.ctrl_locked=1'b1. 38. Set GRF_CHA/CHB_DDRPHY_CON0[4] and GRF_CHA/CHB_DDRPHY_CON1[4] back to 1'b0. 39. DDRPHY SFR settings.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1074
+
+RK3576 TRM (Part 2)
+ Set DDRPHY_LP_CON0.wck_enable=1'b1.  Set DDRPHY_LP_CON0.ctrl_scheduler_en=1'b1.  Set DDRPHY_LP_CON0.ctrl_dqs_drv_off=1'b1 if write link ECC is disabled.  Set DDRPHY_GNR_CON0.wdqs_oen_mode=1'b1. 40. Set DDRPHY wck_adj, rwck_adj, wckdur_adj, rwckdur_adj properly. Set gate/read settings properly. 41. Start DDRPHY initial training. Please refer to the following section for LPDDR5 training procedure. 42. Please set WCK_MODE_APB before memory normal operation. If WCK always on mode is enabled, set DDRPHY_WCK2CKSYNC_CON0.WCK_MODE_APB=2'b1 and DDRPHY_SCHD_CMD_CON0.CAS_EN_APB=1'b0. If WCK always on mode is disabled, set DDRPHY_WCK2CKSYNC_CON0.WCK_MODE_APB=2'b0 and DDRPHY_SCHD_CMD_CON0.CAS_EN_APB=1'b1.
+7.6.4 LPDDR4/4X Training Procedure
+Please apply the following steps before memory initialization if training are required. Controller should not assert dfi_ctrlupd_req during training.  Settings before training
+ Set DDRPHY_OFFSETD_CON0.upd_mode=1'b0 for PHY-initiated update mode.  Write current frequency to DDRPHY_DVFS_CON.freq_train  Initial Vref setting.  Set DDRPHY_MDLL_CON0.clkm_cg_en_sw=1'b1 to freeze DLL lock value during
+training for stability.  Command bus training  On-Die Termination  Apply one of the following DQS cleaning options.
+ Auto DQS clean mode  IO RCV Single-Ended mode  Read DQ training  Write DQ training  Save the training result to read and save training registers for PHY power in/off scenario.  Initial training at lower frequency if necessary.  The PHY should start the periodic training to compensate DRAM voltage/temperature variation followed by periodic training guide.
+7.6.4.1 LPDDR4/4X Command Bus Training
+DDRPHY supports 2 command bus training modes for LPDDR4/4X. That is SW command bus training mode and HW command bus training mode. Following steps are for SW command bus training mode.  Change to low frequency (under 200MHz).  Set DDRPHY_LP_CON0.ds_io_pd=1'b0.  Apply DQS offset.
+ DDRPHY_CAL_CON3.wrlvl_sw_mode=1'b1.  DDRPHY_WR_LVL_CON0.ctrl_wrlvl*_code=ck_offset (ck_offset=91ps/tFS, tFS:
+finedelay).  Enable DDRPHY_OFFSETD_CON0.ctrl_resync.  Disable DDRPHY_OFFSETD_CON0.ctrl_resync.  DDRPHY_CAL_CON3.wrlvl_sw_mode=1'b0.  Controller should configure memory (LPDDR4/4X) in common bus training mode. Issue MRW-1 command followed by MRW-2 command to set MR13 OP[0]=1'b1 (command bus training mode enabled).  After tMRD, configure DDRPHY in command bus training mode.  Set DDRPHY_CAL_CON0.ca_cal_mode=1'b1.  Set DDRPHY_CBT_CON0.cbt_vref_dqs_en=1'b1.  After tDQSCKE, set DDRPHY_CBT_CON3.cbt cke=2'b0.  After tCKELCK, change CK frequency to the highest operating frequency.  Configure CA Vref setting.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1075
+
+RK3576 TRM (Part 2)
+ Set DDRPHY_CBT_CON0.cbt_ca_vref=CA Vref setting value(MR12 OP[6: 0]).  Set DDRPHY_CAL_CON3.wr_sw_mode=1'b1.  Set DDRPHY_WR_LVL_CON2.ctrl_dqs_shift=1'b1.  After tCAENT(20ns), set DDRPHY_CBT_CON0.cbt_vref_dq_en=1'b1 to drive CA vref
+setting value on DQ.  Wait until DDRPHY_CBT_CON5.cbt_tDSTRAIN+
+DDRPHY_CBT_CON5.cbt_tDHTRAlN+6 DFI clock cycle.  Set DDRPHY_CBT_CON0.cbt_vref_dq_ en=1'b0.  Set DDRPHY_WR_LVL CON2.ctrl dqs shift=1'b0.  Set DDRPHY_CAL_CON3.wr_sw_mode=1'b0.  Wait for tVREF_LONG(250ns max).  Set DDRPHY_CBT_CON0.cbt_sw_mode=1'b1.  Run command bus training (CA training/CS fine training) as followings. Following are function definition. APB_READ(REG_NAME.field_name) APB_WRITE(REG_NAME.field_name,VAL) UPD_CODE{ APB_WRITE(DDRPHY_OFFSETD_CON0.ctrl_resync, 1b1)//Update code APB_WRITE(DDRPHY_OFFSETD_CON0.ctrl_resync, 1 b0)//Update code } WAIT_UPD{ Wait(1us) } PATTERN_GEN (REG_NAME.field name){ APB_WRITE(REG_NAME.field_name, 1b1) APB_WRITE(REG_NAME.field_name, 1b0) } PATTERN_CLEAR{ APB_WRITE(DDRPHY_CBT_CON3.cbt_cmd_clear, 1 b1) APB_WRITE(DDRPHY_CBT_CON3.cbt_cmd_clear, 1'b0) } RD_FEEDBACK{ DQ_IO_RD=APB_READ(DDRPHY_DO_IO_RDATA0.DQ_IO_RD1) } Lock_value=APB_READ(DDRPHY_MDLL_CON1.ctrl_lock_value) 1. Apply CK/CS offset(OFFSET=91ps/tFS, tFS: finestep delay) APB_WRITE(DDRPHY_CA_DESKEW_CON4.CKDeSkewCode, OFFSET) APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS0DeSkewCode, OFFSET) UPD_CODE 2. CA training 1) Searching CA_VWML[K] (k=0, 1.2...5) for(search='h0; search<'h2FF; search++){ APB_WRITE(CAkDeSkewCode, search) UPD CODE WAIT_UPD PATTERN_GEN(DDRPHY_CBT_CON3.cbt_cmd_ca_vwml) RD_FEEDBACK if(DDRPHY_DQ_IO_RD[K])!=1'b1){
+CA_VWML[k]=search-1 break } } 2) Searching CA_VWMR[k](k=0, 1, 2..5) for(search='h0; search<`h2FF; search++){ APB_WRITE(DDRPHY_CA_DESKEW_CON*.CAkDeSkewCode, search) UPD_CODE WAIT_UPD
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1076
+
+RK3576 TRM (Part 2)
+PATTERN_GEN(DDRPHY_CBT_CON3.cbt_cmd_ca_vwmr) RD_FEEDBACK if(DQ_IO RD[K]==1'b1){ CA_VWMR[K]= Lock_value-search break }
+} 3) Calculation & Update(k=0, 1, 2...5) if(CA_VWML[K]>CA_VWMR[K]){ CA_VWMC[K]=(CA_VWML[k]-CA_VWMR[k])/2 }
+else { CA_VWMC[K]='h0} APB_WRITE(CAkDeSkewCode, CS_VWMC[k]) UPD_CODE 3. CS Fine training 1) Searching CS_VWML_FINE for(search='h0; search<'h2FF; search++){ APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS0DeSkewCode, search) UPD_CODE WAIT_UPD PATTERN_GEN(DDRPHY_CBT_CON3.cbt_cmd_cs_vwml_fine) RD_FEEDBACK if(DQ_IO_RD!=6'b111111){ CS_VWML_FINE=search-1 break } PATTERN CLEAR } 2) Searching CS_VWMR_FINE for(search='h0; search<'h2FF; search++){ APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS0DeSkewCode, search) UPD_CODE WAIT_UPD PATTERN_GEN(DDRPHY_CBT_CON3.cbt_cmd_cs_vwmr_fine) RD_FEEDBACK If(DQ_IO_RD==6'b111111){ CS_VWMR_FINE=Lock_value-search break }
+PATTERN_CLEAR } 3) Calculation & Update if(CS_VWML_FINE>CS_VWMR FINE){ CS_VWMC_FINE=(CS_VWML_FINE-CS_VWMR_FINE)/2 } else { CS_VWMC_FINE='h0 } APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS0DeSkewCode, CS_VWMC_FINE) UPD_CODE APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS1DeSkewCode, CS_VWMC_FINE) UPD_CODE If two ranks are used, CS1DeSkewCode should be applied by training result of CS0 (CS0DeSkewCode).  Exit command bus training.  Set DDRPHY_CBT_CON3.cbt_cke= 2'b11  Wait for tCKEHDQS.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1077
+
+RK3576 TRM (Part 2)
+ Set DDRPHY_CBT_CON0.cbt_vref_dqs_en=1'b0.  Set DDRPHY_CAL_CON0.ca_cal_mode=1'b0.  Set DDRPHY_CBT_CON0.cbt_sw_mode=1'b0.  After tFC(20ns), memory controller should configure memory(LPDDR4/4X)in
+normal mode. Following steps are for HW command bus training mode.  Change to the low frequency (under 200MHz)  Set DDRPHY_LP_CON0.ds_io_pd=1'b0.  Set DDRPHY_CAL_CON0.ca_swap_mode_dis=1'b1.  Apply DQS offset
+ DDRPHY_CAL_CON3.wrlvl_sw_mode=1'b1  DDRPHY_WR_LVL_CON0.ctrl_wrlvl*_code =ck_offset(ck_offset=91ps/tFS, tFS:
+finedelay).  Enable DDRPHY_OFFSETD_CON0.ctrl_resync.  Disable DDRPHY_OFFSETD_CON0.ctrl_ resync.  DDRPHY_CAL_CON3.wrlvl_sw_mode=1'b0.  Controller should configure memory(LPDDR4/4X)in command bus training mode. Controller should issue MRW-1 command followed by MRW-2 command to set MR13 OP[0]=1'b1(command bus training mode enabled).  After tMRD, configure DDRPHY in command bus training mode.  Enable DDRPHY_CAL CON0.ca_cal_mode.  Set DDRPHY_CBT_CON0.cbt_vref_dqs_en as 2'b01.  After tDQSCKE, set DDRPHY_CBT_CON2.cbt_cke as 2'b00.  After tCKELCK, change CK frequency to the highest operating frequency.  Configure CA Vref setting  Set CA Vref setting value(MR12 OP[6:0]) in DDRPHY_CBT_CON0.cbt_ca_vref.  Enable DDRPHY_CAL_CON3.wr_sw_mode.  Set DDRPHY_WR_LVL_CON2.ctrl_dqs_shift=1'b1.  After tCAENT(20ns), set DDRPHY_CBT_CON0.cbt_vref_dq_en as 2'b01 to drive CA
+vref setting value on DQ.  Wait until DDRPHY_CBT_CON5.cbt_tDSTRAIN+
+DDRPHY_CBT_CON5.cbt_tDHTRAIN+6 DFI clock cycle.  Set DDRPHY_CBT_CON0.cbt_vref_dq_en as 2'b00.  Set DDRPHY_WR_LVL_CON2.ctrl_dqs_shift=1'b0.  Disable DDRPHY_CAL_CON3.wr_sw_mode.  Wait for tVREF_LONG(250ns max).  Start CS/CA calibration.  Apply CK/CS offset.
+Enable DDRPHY_CBT_CON0.cbt_sw_mode. Set DDRPHY_CA_DESKEW_CON4.CKDeSkewCode=ck_offset(ck_offset=91ps/tFS, tFS: finedelay). Set DDRPHY_CA_DESKEW_CON5.CS0DeSkewCode=ck_offset(ck_offset=91ps/tFS, tFS: finedelay). Enable DDRPHY_OFFSETD_CON0.ctrl_resync. Disable DDRPHY_OFFSETD_CON0.ctrl_resync. Disable DDRPHY_CBT_CON0.cbt_sw_mode.  Enable DDRPHY_LP_CON0.scheduler_HW_clock_gating_disable.  Enable DDRPHY_LP_CON0.ctrl_scheduler_en.  Enable DDRPHY_CBT_CON0.cbt_cs_coarse_dis.  Enable DDRPHY_CBT_CON3.cbt_hw_cal_start.  Wait until DDRPHY_CBT_CAL_STAT0.cbt_hw_cal_done.  Disbale DDRPHY_LP_CON0.ctrl_scheduler_en.  Disable DDRPHY_LP_CON0.scheduler_HW_clock_gating_disable.  Exit command bus training.  Set DDRPHY_CBT_CON2.cbt_cke as 2'b11.  Wait for tCKEHDQS.  Set DDRPHY_CBT_CON0.cbt_vref_dqs_en as 2'b00.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1078
+
+RK3576 TRM (Part 2)
+ Set DDRPHY_CAL_CON0.ca_cal_mode to 1'b0.  Disable DDRPHY_CBT_CON3.cbt_hw_cal_start.  After tFC(20ns), memory controller should configure memory (LPDDR4/4X) in
+normal mode.
+7.6.4.2 LPDDR4/4X DQS Clean Procedure
+1. Auto DQS clean mode The goal of auto DQS clean mode is to get valid read DQS without the gate training. Auto DQS clean mode can be used if VSSQ termination is enabled.  Set DDRPHY_TESTIRCV_CON0.dqs0_testircv=4'h3,
+DDRPHY_TESTIRCV_CON0.dqs1_testircv=4'h3.  Set DDRPHY_CAL_CON0.gate_cal_mode=1'b0.  Enable DDRPHY_CAL_CON3.auto_dqs_clean.  Set DDRPHY_CAL_CON2.ctrl_rodt_disable=1'b0. 2. DQS Clean Using IO RCV Single-Ended(SE) mode on VSSQ Termination (Mandatory under 2133Mbps) The goal of DQS clean using IO RCV SE mode is to get valid read DQS without the gate training and auto DQS clean on VSSQ termination on. It is allowed under 2133Mbps and IO RCV SE mode and RCV ODT should be enabled.
+7.6.4.3 LPDDR4/4X Read DQ Calibration
+Read DQ calibration adjusts DQS and DQ delay to compensate the skew introduced by the package, board and on-chip to maximize the setup and hold timing margin.  Configure DDRPHY training pattern registers in DDRPHY_CAL_RD_PATTERN_CON0.
+ Set rdtrn_inv_pattern_ds0=0xee, rdtrn_inv_pattern_ds1=0xee, rdtrn_rddata_pattern0=0x55 and rdtrn_rddata_pattern1=0x55.
+ Configure DDRPHY_OP_CODE_RDC registers for MR32, MR40, MR20 and MR15 such that the training pattern output from DRAM is the same as the training pattern defined above.
+ Configure MR32, MR40, MR25 and MR15 for read training pattern. OP_CODE_PATA=0x55(=rdtrn_rddata_pattern0), OP_CODE_PATB =0x55(=rdtrn_rddata_pattern1), OP_CODE_INVA=0xee(=rdtrn_inv_pattern_ds0), OP_CODE_INVB=0xee(=rdtrn_inv_pattern_ds1).
+ rdtrn_inv_pattern should be the same per BYTE.  Based on the DDRPHY_OP_CODE* values, DDRPHY will send MRW for MR31, MR32,
+MR3 and MR34 to DRAM at the beginning of Read training.  Configure DDRPHY in read training mode.
+ Set DDRPHY_SCHD_TRAIN_CON0.phy_rdtrn_en=1'b1.  Set SCHD_TRAIN_CON0.phy_rdtrn_rank_en properly. For example, if
+phy_rdtrn_rank_en is set to 2'b11, per-rank read training will start from rank-0 to rank-1 sequentially. Any rank can be enabled for read training. For example, it is possible to set phy_rdtrn_rank_en= 2'b10.
+Caution: For Read DQ's setup/hold margin maximization, read DQ delay should bigger than
+read DOS delay.
+Caution: Pattern configuration is an example. Training pattern can be changed by user
+selection.
+7.6.4.4 LPDDR4/4X Write DQ Calibration Initiated by DDRPHY
+Write DQ calibration adjusts for the delays introduced by the memory (tDQS2DQ), package,
+board and on-chip that impact the write cycle.
+Normal Initial Training Setting (533MHz or more)  If data mask and DBI are all disabled at DRAM, set
+DDRPHY_CAL_CON0.wrtrn_dbi_cal_en=1'b0. Otherwise, set to 1'b1.  If current frequency is equal or greater than 1066MHz
+ Set DDRPHY_CAL_CON5.wrtrn_cyc_en=1 and DDRPHY_CAL_CON5.wrtm_cyc_mode=0 (High frequency cycle based training mode).
+ Set DDRPHY_CAL_CON5.wrtrn_cyc_th=0x1f.  If current frequency is less than 1066MHz and equal to or greater than 533MHz, set
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1079
+
+RK3576 TRM (Part 2)
+ DDRPHY_CAL_CON5.wrtrn_cyc_en=1 and DDRPHY_CAL_CON5.wrtm_cyc_mode=1 (Low frequency cycle based training mode).
+ Increase DDRPHY_CAL_CON4.num_repeat to make the initial training result stable.  Set DDRPHY_CAL_CON4.wrtrn_multi_pattern to 1, to use more patterns during the
+initial training. Additional patterns should be defined in DDRPHY_CAL_WR_PATTERN2_CON0~4, DDRPHY_CAL_WR_PATTERN3_CON0~4, DDRPHY_CAL_WR_PATTERN4_CON0~4.  DDRPHY_CAL_CON5.wrtm_cyc_mode should be 0 during normal operation. Low Frequency Initial Training Setting (under 533MHz) Set DDRPHY_CAL_CON0.dvfs_wr_train_en=0x1.  Set DDRPHY_CAL_CON4.dvfs_wr_start_adj=0x0.  Set DDRPHY_CAL_CON5.wrtm_cyc_en=0.  After low frequency write training is done, apply the following setting.  Store the current lockvalue/4 value.  Store write training results from DDRPHY_WR_DESKEWC_CS*_CON*,
+DDRPHY_DM_DESKEWC_CS*_CON*.  Write (stored write training result values+lockvalue*2/4 value) to the following
+registers.  Enable DDRPHY_CAL_CON0.wr_cal_mode.  Enable DDRPHY_CAL_CON3.wr_sw_mode.  DDRPHY_SW_WR_DESKEWC_CS*_CON,
+DDRPHY_SW_DM_DESKEWC_CS*_CON*.  Disable DDRPHY_CAL_CON3.wr_sw_mode.  Enable DDRPHY_OFFSETD_CON0.ctrl_resync.  Disable DDRPHY_OFFSETD_CON0.ctrf_resync.  Restore DVFS write training related setting for successful DVFS write training or other initial write training.  Set DDRPHY_CAL_CON4.dvfs_wr_slart_adj=0xf.  Set DDRPHY_CAL_CON0.dvfs_wr_train_en=0. Common Setting for Write Training  Set write training paltem  DQ pattern in DDRPHY_CAL_WR_PATTERN1_CON0~ DDRPHY_CAL_WR_PATTERN1_CON3.  Set wrtrn_rddata_adj_w0_bst1_8 for BL1~BL2 pattern.  Set wrtrn_rddata_adj_w1_bst1_8 for BL3~BL4 pattern.  Set wrtm_rddata_adj_w2_bst1_8 for BL5~BL6 pattern.  Set wrtrn_rddata_adj_w3_bst1_8 for BL7~BL8 pattern.  Set wrtm_rddata_adj_w0_bst9_16 for BL9~BL10 pattern.  Set wrtrn_rddata_adj_w1_bst9_16 for BL11~BL12 pattern.  Set wrtm_rddata_adj_w2_bst9_16 for BL13-BL14 pattern.  Set wrtrn_rddata_adj_w3_bst9_16 for BL15~BL16 pattern.  Set write DM pattern in CAL_WR_PATTERN1_CON4.  Set wrtrn_rddata_dm_adj_w0_bst1_8 for BL1~BL2 pattern.  Set wrtrn_rddata_dm_adj_w1_bst1_8 for BL3~BL4 pattern.  Set wrtrn_rddata_dm_adj_w2_bst1_8 for BL5~BL6 pattern.  Set wrtrn_rddata_dm_adj_w3_bst1_8 for BL7~BL8 pattern.  Set wrtrn_rddata_dm_adj_w0_bst9_16 for BL9~BL10 pattern.  Set wrtrn_rddata_dm_adj_w1_bst9_16 for BL11~BL12 pattern.  Set wrtrn_rddata_dm_adj_w2_bst9_16 for BL13~BL14 pattern.  Set wrtrn_rddata_dm_adj_w3_bst9_16 for BL15~BL16 pattern.  Configure DDRPHY in write training mode.  Set DDRPHY_SCHD_TRAIN_CON0.phy_wrtrn_en=1.  Set DDRPHY_SCHD_TRAIN_CON0.phy_wrtrn_rank_en properly.  For example, if phy_wrtrn_rank_en is set to 0x3, per-rank write training will start from rank0 to rank1 sequentially.
+7.6.4.5 LPDDR4/4X Periodic Training
+Periodic training using PHY master interface
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1080
+
+RK3576 TRM (Part 2)
+Periodic write training compensates write center shift and gate shift caused by VT variation in memory. Initial training should be completed before periodic training. During periodic training, DDRPHY uses the PHY master interface and generates MPC commands without the memory controller. When DDRPHY request PHY master mode, the controller should place the DRAM in self refresh and assert dfi_phymstr_ack. Periodic write training will be executed in sequence.  The common parameter is same as initial training.  Enable periodic gate training properly (refer to SFR description)
+ Set DDRPHY_SCHD_TRAIN_CON0.periodic_gttrn_en and if use DVFS, set DDRPHY_DVFS0_TRAIN_CON0.dvfs0_periodic gttrn_en and DDRPHY_DVFS1_TRAIN_CON0.dvfs1_periodic_gttrn_en.
+ Enable periodic write training properly. Mandatory up to 2133Mbps.  Set DDRPHY_SCHD_TRAIN_CON0.periodic_wrtrn_en and if use DVFS, set DDRPHY_DVFS0_TRAIN_CON0.dvfs0_periodic_wrtrn_en and DDRPHY_DVFS1_TRAIN_CON0.dvfs1_periodic_wrtrn_en.
+ Set DDRPHY_SCHD_TRAIN_CON1.periodic_time.  Interval of periodic training = periodic_time*tCK_osc (oscillator dock).
+ Set DDRPHY_SCHD_TRAIN_CON1.periodic_en =1 and if use DVFS, set DDRPHY_DVFS0_SCHD_TIME_CON3.dvfs0_periodic_en and DDRPHY_DVFS1_SCHD_TIME_CON3.dvfs1_periodic_en properly.
+ Set DDRPHY_SCHD_TRAIN_CON1.periodic en = 0 for disable periodic training and if use DVFS, set DDRPHY_DVFS0_SCHD_TIME_CON3.dvfs0_periodic_en and DDRPHY_DVFS1_SCHD_TIME_CON3.dvfs1_periodic_en properly.
+DVFS training using PHY master interface DVFS training compensates write center shift and gate shift caused by VT variation in memory. Initial write/gate training should be completed before DVFS training. During DVFS training, DDRPHY uses the PHY master interface and generates MPC commands without the memory controller. When DDRPHY request PHY master mode, the controller should place the DRAM in self refresh and assert dfi_phymstr_ack. DVFS training will be executed in sequence.  The common parameter is same as initial training.  Enable DVFS gate training properly
+ Set DDRPHY_SCHD_TRAIN_CON0.dvfs_gttrn_en and if use DVFS, set DDRPHY_DVFS0_SCHD_TIME_CON3.dvfs0_dvfs_gttrn_en and DDRPHY_DVFS1_SCHD_TIME_CON3.dvfs1_dvfs_gttrn_en.
+ Enable DVFS write training properly.  Set DDRPHY_SCHD_TRAIN_CON0.dvfs_wrtrn_en and if use DVFS, set DDRPHY_DVFS0_SCHD_TIME_CON3.dvfs0_dvfs_wrtrn_en and DDRPHY_DVFS1_SCHD_TIME_CON3.dvfs1_dvfs_wrtrn_en.
+ Set DDRPHY_CAL_CON0.dvfs_wr_train_en=1(DVFS mode).
+7.6.5 LPDDR5 Training Procedure
+Settings before training.  Set DDRPHY_OFFSETD_CON0.upd_mode=0 for PHY-initiated update mode.  Write the current frequency to DDRPHY_DVFS_CON.freq_train.  Initial Vref setting.  Set DDRPHY_MDLL_CON1.clkm_cg_en_sw=1 to freeze DLL lock value during training
+for stability. Before DRAM interface training, training setting should be configured properly.  LP5 SW CBT (command bus training)  Auto DQS clean  Read Calibration  Write DQ Calibration To set DDRPHY training under 1600Mbps at MODE4/3, under 1067Mbps at MODE2, DDRPHY training need WCK2CK sync always on mode and DDRPHY_WCK2CKSYNC_CON0.ctrl_WCK_MODE_APB=1. So please follow the DDRPHY training procedure below. Set MR18 OP[4]=0(always on disable), CAS_EN=1, WCK_MODE=0 ==> CBT/WCK2CK
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1081
+
+RK3576 TRM (Part 2)
+leveling(if needed) ==> set MR18 OP[4]=1(always on), CAS_EN=0,WCK_MODE=1 ==> Send CAS command to memory ==> set dfi_wck_en always 1 ==> DDRPHY training except CBT, WCK2CK leveling (if needed) ==> User choice for WCK2CK sync operation (if use wck2ck sync always on, please keep it or if not, set MR18 OP[4]=0(always on disable), CAS_EN=1,WCK_MODE=0 ==>Do normal transactions. After training setting is done, apply the following sequence.  Configure common parameter training properly.
+ Set DDRPHY_SCHD_TIME_CON0.phy_t_rddata_en='d6.  Set DDRPHY_SCHD_TIME_CON0.WL to match it with DRAM WL setting.  Set DDRPHY_SCHD_TIME_CON1.tCCD=0x8(LPDDR5).  Set DDRPHY_SCHD_TIME_CON1.tWTR=0x1f.  If WCK always on disable, set
+DDRPHY_WCK2CKSYNC_CON0.ctrl_WCK_MODE_APB=0x0 and DDRPHY_SCHD_CMD_CON0.CAS_EN_APB=0x1.  If WCK always on, set WCK2CKSYNC_CON0.ctrl_WCK_MODE_APB=0x1 and SCHD_CMD_CON0.CAS_EN_APB=0x0.  WCK should be driven by memory controller at WCK always on mode.  Set MR operand code same as setting on memory.  For LPDDR5, DDRPHY_LP5_MR_OP.  Enable DDRPHY training mode.  Set DDRPHY_SCHD_TRAIN_CON0.phy_train_en=0x1.  Wait until SCHD_TRAIN_CON0.phy_train_done=0x1.  Disable DDRPHY training mode.  Set DDRPHY_SCHD_TRAIN_CON0.phy_train_en=0x0.  Setting after training.  Set DDRPHY_MDLL_CON0.clkm_cg_en_sw=0 to enable DLL locking.  Set DDRPHY_CAL_CON5.wrtrn_cyc_mode=0 during normal operation.  Set DDRPHY_CAL_CON0.cal_vtc_en=1 to compensate voltage, temperature variation on calibration results.  Set DDRPHY_CAL_CON0.dvfs_wr_train_en=1 initial write training (Write training with dfi_lvl_periodic=0) will be interpreted as DVFS write training afterwards.  Update DDRPHY DLL  Enable DDRPHY_OFFSETD_CON0.ctrl_resync.  Disable DDRPHY_OFFSETD_CON0.ctrl_resync.  The DDRPHY should start the periodic training to compensate DRAM voltage/temperature variation followed by periodic training guide.  Write periodic training.
+7.6.5.1 LPDDR5 Command Bus Training
+LPDDR5 only supports SW command bus training mode. LPDDR5 SW command bus training
+supports CA bit de-skewing function. The overall sequence is CA left edge searching-CA
+right edge searching-Calculation center code of CA. Because LPDDR5 CA is DDR (CA is
+captured at CK rising edge and falling edge), the edge should be searched with changing
+CBT-PH mode. Setting before Training
+ Before CBT training start, check if MR13 OP[6]=1 for CBT mode2.  Set DDRPHY_SCHD_CMD_CON0.RANK_SEL=cs.  Set DDRPHY_CBT_CON2.cbt_dqdm_sel=0x80.  Set DDRPHY_CBT_CON0.cbt_sw_mode=0x1.  Set DDRPHY_CBT_CON2.cbt_tWCK2DQ7 satisfying memory timing parameter
+tWCK2DQ7H.  Set DDRPHY_CBT_CON2.cbt_tDSTRAIN_LP5 satisfying memory timing parameter
+tDStrain.
+CA Left Edge Searching with CBT-PH[7]=1'b0
+ Entering CBT Mode  Configure the memory entering CBT mode.  Set DDRPHY_SCHD_CON0.scheduler_sw_mode=0x1.  Set DDRPHY_CAL_CON0.ca_cal_mode=0x1.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1082
+
+RK3576 TRM (Part 2)
+ Set DDRPHY_CBT_CON0.cbt_vref_dqs_en=0x1.  Set DDRPHY_WCK2CKSYNC_CON0.wck_out_enable=0x1.  Set DDRPHY_SCHD_CMD_CON2.MA_CODE=0x10.  Set DDRPHY_SCHD_CMD_CON2.OP_CODE=0x10.  Toggle DDRPHY_SCHD_DIRECT_CMD3.CMD_MWR_req.  Configure the PHY entering CBT mode.  Set DDRPHY_CBT_CON0.cbt_vref_dq_en=0x1.  Set DDRPHY_CBT_CON2.cbt_start=0x1.  Wait for tDQ7HWCK+tDQ72DQ (255ns).  Set DDRPHY_CBT_CON2.cbt_wck_en=0x1.  Toggle DDRPHY_CBT_CON2.cbt_vref_set_en.  Set DDRPHY_CBT_CON2.cbt_dq_rcv_en=0x1.  Set DDRPHY_CBT_CON3.cbt_en=0x1.  Toggle DDRPHY_OFFSETD_CON0.ctrl_resync.  Searching CA Left edge as followings. APB_READ (REG_NAME[bit]) APB_WRITE (REG_NAME[bit],VAL) UPD_CODE { APB_WRITE (DDRPHY_OFFSETD_CON0.ctrl_resync, 1'b1) APB_WRITE (DDRPHY_OFFSETD_CON0.ctrl_resync, 1'b0) } WAIT_UPD { Wait(1us) } PATTERN_GEN_1 { APB_WRITE (DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CS_1, cs) APB_WRITE (DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CS_2, 0x0) APB_WRITE (DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CMD_1, {13'h0, ca, 1'h0, ~ca}) APB_WRITE (DDRPHY_SCHD_DIRECT_CMD1. DIRECT_CMD_2, {13'h0, ~ca, 1'h0, ~ca}) APB_WRITE (DDRPHY_SCHD_DIRECT_CMD0.DIRECT_EN_APB, 1'b1) Wait(1ns) APB_WRITE (DDRPHY_SCHD_DIRECT_CMD0.DIRECT_EN_APB, 1'b0) } RD_FEEDBACK { DQ_IO_RD = APB_READ (REG_NAME.field_name) } if(DDRPHY_CLKMODE_CON == 2) offset =APB_READ (DDRPHY_MDLL_CON1.ctrl_lock_value)/2 if (DDRPHY_CLKMODE_CON == 4) offset = APB_READ (DDRPHY_MDLL_CON1.ctrl_lock_value) 1. Apply CK offset and CS offset APB_WRITE (DDRPHY_CA_DESKEW_CON4.CKDeSkewCode, offset) APB_WRITE (DDRPHY_CA_DESKEW_CON5.CS*DeSkewCode, offset) UPD_CODE 2. Searching CA left edge CA_VWML[k] (k = 0, 1, 2...6) for(search='h0; search < `h2FF; search++) { APB_WRITE (CAkDeSkewCode, search) UPD_CODE
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1083
+
+RK3576 TRM (Part 2)
+WAIT_UPD
+PATTERN_GEN
+RD_FEEDBACK
+if (DQ_IO_RD[k]!=1'b1) {
+CA_VWML[k] = search-1
+break
+}
+}
+3. Rollback the CK offset and CS offset
+APB_WRITE(DDRPHY_CA_DESKEW_CON4.CKDeSkewCode,0x0).
+APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS*DeSkewCode,0x0).
+UPD_CODE  Exiting CBT mode
+ Configure the DDRPHY exiting CBT mode  Set DDRPHY_CBT_CON3.cbt_en = 0x0  Toggle DDRPHY_OFFSETD_CON0.ctrl_resync  Set DDRPHY_CBT_CON2.cbt_start =0x0  Set DDRPHY_CBT CON2.cbt_dq_rcv_en=0x0  WAIT for tDQ7LWCK + 10tCK  Set DDRPHY_CBT_CON2.cbt_wck_en=0x0  Wait tXCBT
+ Configure the memory exiting CBT mode.  Set DDRPHY_SCHD_CMD_CON2.MA_CODE=0x10.  Set DDRPHY_SCHD_CMD_CON2.OP_CODE = 0x00.  Toggle DDRPHY_SCHD_DIRECT_CMD3.CMD_MWR_req.  Set DDRPHY_CBT_CON0.cbt_vref_dq_en = 0x0.  Set DDRPHY_WCK2CKSYNC_CON0.wck_out_enable = 0x0.  Set DDRPHY_CBT_CON0.cbt_vref_dqs_en = 0x0.  Toggle DDRPHY_CBT_CON2.cbt_vref_pre_en.  Set DDRPHY_CAL_CON0.ca_cal_mode =0x0.  Set DDRPHY_SCHD_CON0.scheduler_sw_mode =0x0.
+CA Right Edge Searching with CBT-PH[7] = 1'b1  Entering CBT Mode
+ Configure the memory entering CBT mode.  Set DDRPHY_SCHD_CON0.scheduler_sw_mode = 0x1.  Set DDRPHY_CAL CON0.ca_cal_mode = 0x1.  Set DDRPHY_CBT_CON0.cbt_vref_dqs_en = 0x1.  Set DDRPHY_WCK2CKSYNC_CON0.wck_out_enable = 0x1.  Set DDRPHY_SCHD_CMD_CON2.MA_CODE= 0x10.  Set DDRPHY_SCHD_CMD_CON2.OP_CODE= 0x90.  Toggle DDRPHY_SCHD_DIRECT_CMD3.CMD_MWR_req.
+ Configure the DDRPHY entering CBT mode.  Set DDRPHY_CBT_CON0.cbt_vref_dq_en=0x1.  Set DDRPHY_CBT_CON2.cbt_start =0x1.  Wait for tDQ7HWCK +tDQ72DQ(255ns).  Set DDRPHY_CBT_CON2.cbt_wck_en =0x1.  Toggle DDRPHY_CBT_CON2.cbt_vref_set_en.  Set DDRPHY_CBT_CON2.cbt_dq_rcv_en = 0x1.  Set DDRPHY_CBT_CON3.cbt_en = 0x1.  Toggle DDRPHY_OFFSETD_CON0.ctrl_resync.
+ Searching CA Right edge as followings. APB_READ(REG_NAME[bit])
+APB_WRITE(REG_NAME[bit],VAL)
+UPD_CODE {
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1084
+
+RK3576 TRM (Part 2)
+APB_WRITE(DDRPHY_OFFSETD_CON0.ctrl_resync,1'b1) APB_WRITE(DDRPHY_OFFSETD_CON0.ctrl_resync,1'b0) } WAIT_UPD { Wait(1us) } PATTERN_GEN_1 { APB_WRITE(DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CS_1,cs) APB_WRITE(DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CS_2,0x0) APB_WRITE(DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CMD_1,{13'h0, ca, 1'b0, ~ca}) APB_WRITE(DDRPHY_SCHD_DIRECT_CMD1.DIRECT_CMD_2,{13'h0, ~ca, 1'b0, ca}) } RD_FEEDBACK { DQ_IO_RD=APB_READ(REG_NAME.field_name) } if(CLKMODE_CON == 2) offset=APB_READ(DDRPHY_MDLL_CON1.ctrl_lock_value)/2 if(CLKMODE_CON == 4) offset=APB_READ(DDRPHY_MDLL_CON1.ctrl_lock_value) 1. Apply CK offset and CS offset. APB_WRITE(DDRPHY_CA_DESKEW_CON4.CKDeSkewCode, offset) APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS*DeSkewCode, offset) UPD_CODE 2. Searching CA left edge CA_VWMR[k](k=0, 1, 2...6) for(search='h0;search<'h2ff;search++){ APB_WRITE(CAkDeSkewCode, search) UPD_CODE WAIT_UPD PATTERN_GEN RD_FEEDBACK if(DQ_IO_RD[k]==1'b1){
+CA_VWMR[k]=search-1 break } } 3. Rollback the CK offset and CS offset. APB_WRITE(DDRPHY_CA_DESKEW_CON4.CKDeSkewCode,0x0) APB_WRITE(DDRPHY_CA_DESKEW_CON5.CS*DeSkewCode,0x0) UPD_CODE  Exiting CBT Mode  Configure the DDRPHY exiting CBT mode.  Set DDRPHY_CBT_CON3.cbt_en=0x0.  Toggle DDRPHY_OFFSETD_CON0.ctrl_resync.  Set DDRPHY_CBT_CON2.cbt_start=0x0.  Set DDRPHY_CBT_CON2.cbt_dq_rcv_en=0x0.  WAIT for tDQ7LWCK.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1085
+
+RK3576 TRM (Part 2)
+
+ Set DDRPHY_CBT_CON2.cbt_wck_en=0x0.
+
+ Wait tXCBT.
+
+ Configure the memory exiting CBT mode.
+
+ Set DDRPHY_SCHD_CMD_CON2.MA_CODE=0x10.
+
+ Set DDRPHY_SCHD_CMD_CON2.OP_CODE=0x00.
+
+ Toggle DDRPHY_SCHD_DIRECT_CMD3.CMD_MWR_req.
+
+ Set DDRPHY_CBT_CON0.cbt_vref_dq_en=0x0.
+
+ Set DDRPHY_WCK2CKSYNC_CON0.wck_out_enable=0x0.
+
+ Set DDRPHY_CBT_CON0.cbt_vref_dqs_en=0x0.
+
+ Toggle DDRPHY_CBT_CON2.cbt_vref_pre_en.
+
+ Set DDRPHY_CAL_CON0.ca_cal_mode=0x0.
+
+ Set DDRPHY_SCHD_CON0.scheduler_sw_mode=0x0.
+
+Calculation of CA Center Code
+
+ MODE2
+
+ CA_VWMR_TMP[k]=Lock_value ­ CA_VWMR[k](k=0,1,2...6)
+
+ If CA_VWML[k]>=CA_VWMR_TMP[k], CA_VWMC[k]=(CA_VWML[k]-
+
+CA_VWMR_TMP[k])/2+Lock_value/2
+
+ Else, CA_VWMC[k]=Lock_value/2-((CA_VWMR_TMP[k]-CA_VWML[k])/2)
+
+ MODE4
+
+ CA_VWMR_TMP[k]=2*Lock_value-CA_VWMR[k](k=0,1,2...6).
+
+ If CA_VWML[k]>=CA_VWMR_TMP[k], CA_VWMC[k]=(CA_VWML[k]-
+
+CA_VWMR_TMP[k])/2+Lock_value.
+
+ Else, CA_VWMC[k]=Lock_value-((CA_VWMR_TMP[k]-CA_VWML[k])/2).
+
+ Update CA center code on
+
+ Write DDRPHY_CA_DESKEW_CON0~2.CAkDeSkewCode as CA_VWMC[k].
+
+ Set DDRPHY_CBT_CON3.cbt_en=0x1.
+
+ Toggle DDRPHY_OFFSETD_CON0.ctrl_resync.
+
+ Set DDRPHY_CBT_CON0.cbt_sw_mode=0x0.
+
+7.6.5.2 LPDDR5 DQS Clean Procedure
+
+Auto DQS Clean (Mandatory above 3200Mbps)
+
+The goal of auto DQS clean mode is to get valid read DQS without the gate training. Auto
+
+DQS clean mode can be used if VSSQ termination is enabled.
+
+ Set DDRPHY_TESTIRCV_CON0.dqs0_testircv=0x3,
+
+DDRPHY_TESTIRCV_CON0.dqs1_testircv=0x3.
+
+ Set DDRPHY_CAL_CON0.gate_cal_mode=0x0.
+
+ Enable DDRPHY_CAL_CON3.auto_dqs_clean.
+
+ Set DDRPHY_CAL_CON2.ctrl_rodt_disable=0x0.
+
+If auto DQS clean mode is enabled, RL should be minimum RL of below table or more. The
+
+memory post_amble duration should be 4.5tWCK static and preamble duration should be
+
+2tWCK static, 2tWCK toggle or 4tWCK static.
+
+Table 7-3 Minimum Read Latency for LPDDR5 Auto DQS Clean Enable
+
+P
+
+0
+
+1
+
+2
+
+3
+
+4
+
+H
+
+Y m
+
+o
+
+d
+
+e
+
+M
+
+LPD
+
+e
+
+DR4
+
+LPDDR5
+
+m
+
+/4X
+
+o
+
+r
+
+y T
+
+y
+
+p
+
+e
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1086
+
+RK3576 TRM (Part 2)
+
+M
+
+2
+
+2
+
+1
+
+9
+
+9
+
+i
+
+8
+
+4
+
+4
+
+C
+
+C
+
+n
+
+C
+
+C
+
+C
+
+K
+
+K
+
+R
+
+K
+
+K
+
+K
+
+(
+
+(
+
+e
+
+(
+
+3
+
+3
+
+a
+
+2
+
+6
+
+6
+
+d
+
+8
+
+W
+
+W
+
+L
+
+W
+
+C
+
+C
+
+a
+
+C
+
+K
+
+K
+
+t
+
+K
+
+)
+
+)
+
+e
+
+)
+
+n
+
+c
+
+y
+
+w
+
+/
+
+A
+
+u
+
+t
+
+o
+
+D
+
+Q
+
+S
+
+E
+
+n
+
+a
+
+b
+
+l
+
+e
+
+DQS Clean Using IO RCV Single-Ended (SE) Mode on VSSQ Termination (Mandatory under 3200Mbps) The goal of DQS clean using IO RCV SE mode is to get valid read DQS without the gate
+
+training and auto DQS clean on VSSQ termination ON. It is allowed under 3200Mbps and IO RCV SE MODE and RCV ODT should be enabled.
+
+7.6.5.3 LPDDR5 Read DQ Calibration
+
+Read Calibration adjusts DQS and DQ delay to compensate the skew introduced by the
+
+package, board and on-chip to maximize the setup and hold timing margin.
+
+ Configure PHY training pattern registers in CAL_RD_PATTERN_CON0.  Set rdtrn_inv_pattern_ds0=0xee, rdtrn_inv_pattern_ds1=0xee, rdtrn_rddata_pattern0=0x55 and rdtrn_rddata_pattern1=0x55.  Configure DDRPHY_OP_CODE_RDC registers for MR31, MR32, MR33 and MR34 such that the training pattern output from DRAM is the same as the training pattern defined above.  Configure MR31, MR32, MR33 and MR34 for read training pattern.  OP_CODE_PATA=0x55(rdtrn_rddata_pattern0), OP_CODE_PATB=0x55(rdtrn_rddata_pattern1),
+
+OP_CODE_INVA=0xee(rdtrn_inv_pattern_ds0), OP_CODE_INVB=0xee(rdtrn_inv_pattern_ds1).
+
+ Rdtrn_inv_pattern should be the same per BYTE.  Based on the OP_CODE_* values, PHY will send MRW for MR31, MR32, MR33
+and MR34 to DRAM at the beginning of read training.
+
+ Configure DDRPHY and memory in link ECC mode, if link ECC is enabled.  Configure memory in link ECC mode.  Issue MR3 command to set DBI-WR enabled and DBI-RD disabled.
+
+ Issue MR22 command to enable link ECC mode.  Configure DDRPHY in link ECC mode.
+ Set DDRPHY_CAL_CON0.rdtrn_dbi_cal_en =0x1.  Set DDRPHY_CAL CON3.ctrl_link_ecc_mode=0x1.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1087
+
+RK3576 TRM (Part 2)
+ Configure DDRPHY in read training mode.  Set DDRPHY_SCHD_TRAIN_CON0.phy_rdtrn_en=1  Set DDRPHY_SCHD_TRAIN_CON0.phy_rdtrn_rank_en properly.  For example, if phy_rdtrn_rank_en is set to 2'b11, per-rank read training will start from rank0 to rank1 sequentially.  Any rank can be enabled for read training. For example, it is possible to set phy_rdtrn_rank_en=2'b10.
+7.6.5.4 LPDDR5 Write DQ Calibration
+Normal Initial Training Setting (533MHz or More)  If data mask and DBI are all disabled at DRAM, set
+DDRPHY_CAL_CON0.wrtrn_dbi_cal_en=0. Otherwise set to 1.  Configure DDRPHY and memory in link ECC mode if link ECC is enabled.
+ Configure memory in link ECC mode.  Issue MR3 command to set DBI-WR enabled and DBI-RD disabled.  Issue MR22 command to enable link ECC mode.
+ Configure DDRPHY in link ECC mode.  Set DDRPHY_CAL_CON0.wrtrn_dbi_cal_en=0x1.  Set DDRPHY_CAL_CON3.ctrl_link_ecc_mode=0x1.
+ If current frequency is equal to or greater than 1066MHz  Set DDRPHY_CAL_CON5.wrtrn_cyc_en=1 and DDRPHY_CAL_CON5.wrtrn_cyc_mode=0(High frequency cycle based training mode).  Set DDRPHY_CAL_CON5.wrtrn_cyc_th=31(LPDDR5).  If PRBS write training is to be enabled after write training is done  Set DDRPHY_MDLL_CON0.clkm_cg_en_sw=1  Read DDRPHY_MDLL_CON1.ctrl_lock_value  Set DDRPHY_CAL_CON5.wrtrn_cyc_th=ctrl_lock_value/4  Set DDRPHY_MDLL_CON0.clkm_cg_en_sw=0
+ If current frequency is less than 1066MHz and equal to or greater than 533MHz, set DDRPHY_CAL_CON5.wrtrn_cyc_en=1 and DDRPHY_CAL_CON5.wrtrn_cyc_mode=1(Low frequency cycle based training mode).
+ Increase DDRPHY_CAL_CON4.num_repeat to make the initial training result stable.  Set DDRPHY_CAL_CON4.wrtrn_multi_pattern to 1 to use more patterns during the
+initial training. Additional patterns should be defined in DDRPHY_CAL_WR_PATTERN2_CON0~4, DDRPHY_CAL_WR_PATTERN3_CON0~4, DDRPHY_CAL_WR_PATTERN4_CON0~4.  DDRPHY_CAL_CON5.wrtrn_cyc_mode should be 0 during normal operation. Low Frequency Initial Training Setting (under 533MHz)  Set DDRPHY_CAL_CON0.dvfs_wr_train_en=0x1.  Set DDRPHY_CAL_CON4.dvfs_wr_start_adj=0x0.  Set DDRPHY_CAL_CON5.wrtrn_cyc_en=0.  After low frequency write training is done, apply the following setting.  Store the current lockvalue/4 value.  Store write training results from DDRPHY_WR_DESKEWC_CS*_CON*,
+DDRPHY_DM_DESKEWC_CS*_CON*, DDRPHY_ECC_DESKEWC_CS*_CON*.  Write (stored write training result values + lockvalue/4) to the following register.
+ Enable DDRPHY_CAL_CON0.wr_cal_mode.  Enable DDRPHY_CAL_CON3.wr_sw_mode.  DDRPHY_SW_WR_DESKEWC_CS*_CON,
+DDRPHY_SW_DM_DESKEWC_CS*_CON*, DDRPHY_SW_ECC_DESKEWC_CS*_CON*.  Disable DDRPHY_CAL_CON3.wr_sw_mode.  Restore DVFS write training related setting for successful DVFS write training or other initial write training.  Set DDRPHY_CAL_CON4.dvfs_wr_start_adj=0xf.  Set DDRPHY_CAL_CON0.dvfs_wr_train_en=0. Common Setting for Write Training
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1088
+
+RK3576 TRM (Part 2)
+ Set write training pattern  DQ pattern in DDRPHY_CAL_WR_PATTERN1_CON0~ DDRPHY_CAL_WR_PATTERN1_CON3.
+ Set wrtrn_rddata_adj_w0_bst1_8 for BL1~BL2 pattern.  Set wrtrn_rddata_adj_w1_bst1_8 for BL3~BL4 pattern.  Set wrtm_rddata_adj_w2_bst1_8 for BL5~BL6 pattern.  Set wrtrn_rddata_adj_w3_bst1_8 for BL7~BL8 pattern.  Set wrtm_rddata_adj_w0_bst9_16 for BL9~BL10 pattern.  Set wrtrn_rddata_adj_w1_bst9_16 for BL11~BL12 pattern.  Set wrtm_rddata_adj_w2_bst9_16 for BL13-BL14 pattern.  Set wrtrn_rddata_adj_w3_bst9_16 for BL15~BL16 pattern.  Set write DM pattern in DDRPHY_CAL_WR_PATTERN1_CON4.  Set wrtrn_rddata_dm_adj_w0_bst1_8 for BL1~BL2 pattern.  Set wrtrn_rddata_dm_adj_w1_bst1_8 for BL3~BL4 pattern.  Set wrtrn_rddata_dm_adj_w2_bst1_8 for BL5~BL6 pattern.  Set wrtrn_rddata_dm_adj_w3_bst1_8 for BL7~BL8 pattern.  Set wrtrn_rddata_dm_adj_w0_bst9_16 for BL9~BL10 pattern.  Set wrtrn_rddata_dm_adj_w1_bst9_16 for BL11~BL12 pattern.  Set wrtrn_rddata_dm_adj_w2_bst9_16 for BL13~BL14 pattern.  Set wrtrn_rddata_dm_adj_w3_bst9_16 for BL15~BL16 pattern.  Configure DDRPHY in write training mode.
+ Set DDRPHY_SCHD_TRAIN_CON0.phy_wrtrn_en=1.  Set DDRPHY_SCHD_TRAIN_CON0.phy_wrtrn_rank_en properly.  For example, if phy_wrtrn_rank_en is set to 0x3, per-rank write training will start
+from rank0 to rank1 sequentially.
+7.6.5.5 LPDDR5 Periodic Training
+Periodic training compensates write center shift and gate shift caused by VT variation in memory. Initial write/gate training should be completed before periodic training. During periodic training, DDRPHY uses the PHY master interface and generates RDC/WFF/RFF/MPC commands without the memory controller. When DDRPHY request PHY master mode, the controller should place the DRAM in self refresh and assert dfi_phymstr_ack. Periodic training will be executed in sequence.  The common parameter is same as initial training.  Enable periodic write training properly (refer to SFR description)
+ Set DDRPHY_SCHD_TRAIN_CON0.periodic_wrtrn_en and if use DVFS, set DDRPHY_DVFS0_TRAIN_CON0.dvfs0_periodic_wrtrn_en and DDRPHY_DVFS1_TRAIN_CON0.dvfs1_periodic_wrtrn_en.
+ Set DDRPHY_SCHD_TRAIN_CON1.periodic_time.  Interval of periodic training = periodic_time*tCK_osc (oscillator clock).
+ Set DDRPHY_SCHD_TRAIN_CON1/ DDRPHY_DVFS*_SCHD_TIME_CON3.periodic_en =1 and if use DVFS, set DDRPHY_DVFS0_SCHD_TIME_CON3.dvfs0_periodic_en and DDRPHY_DVFS1_SCHD_TIME_CON3.dvfs1_periodic_en properly.
+7.6.5.6 LPDDR5 DVFS Training
+DVFS training compensates write center shift and gate shift caused by VT variation in memory. Initial write/gate training should be completed before DVFS training. During DVFS training, DDRPHY uses the PHY master interface and generates RDC/WFF/RFF/MPC commands without the memory controller. When DDRPHY request PHY master mode, the controller should place the DRAM in self refresh and assert dfi_phymstr_ack. DVFS training will be executed in sequence.  The common parameter is same as initial training.  Enable DVFS write training properly.
+ Set DDRPHY_SCHD_TRAIN_CON0.dvfs_wrtrn_en and if use DVFS, set DDRPHY_DVFS0_SCHD_TIME_CON3.dvfs0_dvfs_wrtrn_en and DDRPHY_DVFS1_SCHD_TIME_CON3.dvfs1_dvfs_wrtrn_en.
+ Set DDRPHY_CAL_CON0.dvfs_wr_train_en=1(DVFS mode).
+7.6.6 DDR Monitor
+1. DDR read or write address monitor
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1089
+
+RK3576 TRM (Part 2)
+DDR monitor module can store 4 consecutive read or write addresses in real time for each AXI port. We can read these addresses through APB bus for debug when system enters abnormal state. Each read or write address together with awid/arid and a*ready/a*valid signals are stored in two 32bits registers. Following is an example of monitoring read port of AXI port n(n=0/1/2/3/4). DDRMON_PORTn_ADDR_31_0={araddr_n[31:0]} DDRMON_PORTn_ADDR_63_32={arid_n[7:0],arready_n,arvalid_n,araddr_n[33:32]} Following is an example of monitoring write port of AXI port n(n=0/1/2/3/4). DDRMON_PORTn_ADDR_31_0={awaddr_n[31:0]} DDRMON_PORTn_ADDR_63_32={awid_n[7:0],awready_n,awvalid_n,awaddr_n[33:32]} The steps of configuration to monitor DDR read or write address is as follows.  Configure DDRMON_IF_CTRL.direction to select storing read or write address.  Set DDRMON_IF_CTRL.if_mon_en to 1 to enable DDR monitor.  When system is abnormal, we can read the register to get the current four addresses. 2. DDR access address monitor within a specified range Sometimes we want to confirm whether DDR read or write within a specified address range on a certain AXI port, then we can configure the address range and enable this function. The steps of configuration to monitor DDR access address within a specified range is as follows.  Configure the write address range registers DDRMON_WR_START_ADDR,
+DDRMON_WR_END_ADDR, and read address registers DDRMON _RD_START_ADDR, DDRMON_RD_END_ADDR.  Enable corresponding AXI write port access address monitor interrupt by configuring the register DDRMON_INT_MASK2[4:0], enable corresponding AXI read port access address monitor interrupt by configuring the register DDRMON_INT_MASK3[4:0].  Set DDRMON_IF_CTRL.if_mon_en to 1 to enable DDR address monitor.  If the read or write addresses hit the range, then interrupt will assert, and we can read the interrupt status register DDRMON_INT_STATUS1. 3. DDR access command statistics This module can do the statistics about DDR access command, like write, read and active by monitoring DFI interface. There are two mode to do statistics, hardware mode and software mode. Two thresholds can be set, if read and write command number is more than high threshold, or less than low threshold, the interrupt will be asserted. 4. DDRCTL's LPR/HPR/WR CAM status statistics The DDR monitor will monitor the DDRCTL's available LPR/HPR/WR CAM slot. The result can be read through LPR/HPR/WR_CREDIT_CNT* registers. 5. DDR low power statistics It does the statistics about the low power period such as DDR self-refresh power down, power down, clkstop and PHY low power and so on. After compare statistics interrupt asserts, the low power period represent in correspond count register will be updated and can be accessed through APB bus interface. 6. DDR special pattern statistics for a designated bank In this module, for a designated bank, which is software configured. DDRMON will statistic the count for special DDR command patterns:  per_bank_rd_wr_per_act_max_number: count the max read and write commands in an active command to a precharge command interval.  per_bank_series_rd_burst_max_number: count the max series read command in an active command to a precharge command interval.  per_bank_series_rd_burst_times_number: count the total number of series read command.  per_bank_series_wr_burst_max_number: count the max series write command in an active command to a precharge command interval.  per_bank_series_wr_burst_times_number: count the total number of series write command.  per_bank_rd2rd_page_hit_number: count the total number of back to back read command.  per_bank_wr2wr_page_hit_number: count the total number of back to back write
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1090
+
+RK3576 TRM (Part 2)
+
+command.
+
+ per_bank_rd2wr_page_hit_number: count the total number of read next to write
+
+command.
+
+ per_bank_rd2rd_page_miss_number: count all RD-PRE-ACT-RD pattern.
+
+ per_bank_wr2wr_page_miss_number: count all WR-PRE-ACT-WR pattern.
+
+ per_bank_rd2wr_page_miss_number: count all RD-PRE-ACT-WR pattern.
+
+ per_bank_wr2rd_page_miss_number: count all WR-PRE-ACT-RD pattern.
+
+7. DDR special pattern statistics for all banks
+
+In this module, DDRMON count the special pattern for all ranks and all banks.
+
+ all_bank_act_act_number: count all ACT-ACT pattern
+
+ all_bank_act_pre_number: count all ACT-PRE pattern
+
+ all_bank_act_rdwr_same_number: count ACT-RD and ACT-WR pattern, which active
+
+command and read/write command with the same rank, same bank and same row.
+
+ all_bank_rd2wr_number: count all RD-WR pattern.
+
+ all_bank_wr2rd_number: count all WR-RD pattern.
+
+ all_bank_series_rd_total_cnt_number: count all back to back read pattern.
+
+ all_bank_series_wr_total_cnt_number: count all back to back write pattern.
+
+ all_bank_series_rd_burst_max_number: count the longest series read command.
+
+ all_bank_series_wr_burst_max_number: count the longest series write command.
+
+ all_bank_series_rd_burst_times_number: count the count of all series read command
+
+interval.
+
+ all_bank_series_wr_burst_times_number: count the count of all series write command
+
+interval.
+
+ all_bank_tccdmw_cnt_number: count all mask write command.
+
+8. Hardware mode
+
+In hardware mode, a dfi timer is used to specify a statistics period, the command statistics
+
+is done in the statistics period. The dfi timer is running in 24MHz. After dfi timer counts to
+
+the threshold, and update the statistics value, the dfi timer will restart automatically, and
+
+count again.
+
+The steps of hardware mode of DDR access command statistics is as follows.
+
+ Configure register DDRMON_CTRL.hardware_en as 1 to enable hardware mode.
+
+ Configure register DDRMON_TIMER_COUNT to set the dfi timer count threshold, the
+
+statistics is done in the period of timer being less than the value of
+
+DDRMON_TIMER_COUNT.
+
+ Configure register DDRMON_CTRL.lpddr4_en and DDRMON_CTRL.lpddr5_en to set the
+
+DDR mode:
+
+DDRMON_CTRL.lpddr4_en
+
+DDRMON_CTRL.lpddr5_en
+
+DDR mode
+
+1
+
+0
+
+LPDDR4
+
+0
+
+1
+
+LPDDR5
+
+ Configure register DDRMON_FLOOR_NUMBER to specify the low threshold of interrupt,
+
+and configure register DDRMON_TOP_NUMBER to specify the high threshold of
+
+interrupt.
+
+ Configure register DDRMON_CTRL.timer_cnt_en as 1 to start hardware mode.
+
+ Wait for the interrupt to do following process. We also can read the read, write and
+
+active command number separately.
+
+9. Software mode
+
+In software mode, the statistics is controlled by software.
+
+The steps of hardware mode of DDR access command statistics is as follows.
+
+ Configure register DDRMON_CTRL.lpddr4_en and DDRMON_CTRL.lpddr5_en to set the
+
+DDR mode like hardware mode.
+
+ Configure register DDRMON_CTRL.software_en as 1 to enable software mode statistics.
+
+Configure register DDRMON_CTRL.software_en as 0 to stop the statistics, and generate the
+
+statistics result. We can read the read, write and active command number separately.
+
+10. Start 2 channels DDR monitors and interconnect monitor at the same time
+
+Each DDR channel has one DDR monitor. Following steps are to start these 2 DDR monitors
+
+and interconnect monitor working at the same time.
+
+ Set GRF_DDR_COMMON_CON4[2:0] to 3'b111 to enable interconnect monitor
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1091
+
+RK3576 TRM (Part 2)
+controlled by DDR monitor.  Set DDRMON_CTRL0.external_trigger_sel=1'b1 to select external control signal to start
+DDR monitor instead of setting DDRMON_CTRL0.software_start or DDRMON_CTRL0.timer_cnt_en.  Set DDR monitor registers properly.  Set interconnect monitor registers properly.  Set GRF_DDR_COMMON_CON4[8] to 1'b1 to start DDR monitor and interconnect monitor. Then the 2 DDR monitor and interconnect monitor are working. The steps to stop DDR monitor and interconnect monitor are as follows.  Set GRF_DDR_COMMON_CON4[8] to 1'b0.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+1092
+
+

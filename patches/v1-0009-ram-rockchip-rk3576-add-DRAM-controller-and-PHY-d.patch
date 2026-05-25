@@ -1,0 +1,734 @@
+From 89d3a9fa6e1c0156b134df1bad917ecc74ec3980 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:58:51 +0200
+Subject: [RFC PATCH v1 09/14] ram: rockchip: rk3576: add DRAM controller and
+ PHY driver
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add the TPL DRAM initialization driver for RK3576.  This replaces
+Rockchip's DDR blob with an open-source implementation targeting
+upstream U-Boot.
+
+Hardware: Synopsys uMCTL2 DDRCTL + Synopsys LPDDR4/4X/5 combo PHY.
+Two independent channels (ch0/ch1), each with one DDRCTL + one PHY.
+Supported DRAM types: LPDDR4, LPDDR4X, LPDDR5.
+
+Key implementation notes:
+
+  PHY training: the RK3576 combo PHY includes a hardware training
+  engine (phy_train_en / phy_train_done in SCHD_TRAIN_CON0[0:1]).
+  No Synopsys training firmware (.bin) is needed.  This is confirmed
+  by TRM §7.6.4-7.6.5 and matches the approach used on RK3568.
+
+  Init sequence: follows TRM §7.6.2 (LPDDR4, 37 steps) and §7.6.3
+  (LPDDR5, 42 steps).  LPDDR5 deviations are noted at each step:
+  WCK2CK sync setup (step 26/28), CS toggle (step 28), ZQ calibration,
+  WCK always-on mode (step 42).
+
+  ZQ calibration: phy_zq_calibrate() runs the PHY impedance engine
+  (ZQ_CON0/CON1) per TRM §7.6.2 step 29 / §7.6.3 step 33.
+
+  Geometry storage: sdram_org_config() encodes cap_info into the
+  Rockchip sys_reg format and writes PMU1GRF OS_REG2/3 for SPL and
+  Linux to consume (W10).
+
+  SPL/U-Boot stub: rk3576_dmc_get_info() reads DRAM size back from
+  OS_REG2 via rockchip_sdram_size().
+
+  Timing tables: included from sdram-rk3576-lpddr5-detect-2133.inc
+  and sdram-rk3576-lpddr4-detect-1560.inc via sdram_configs[].
+
+Modelled on the RK3568 RFC series (20260517-rk3568-raminit-v1,
+Pavel Golikov).  Addresses Flipper One open DRAM init task
+(flipperdevices/flipperone-linux-build-scripts#56).
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ drivers/ram/rockchip/sdram_rk3576.c | 655 +++++++++++++++++++++++++++-
+ 1 file changed, 646 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/ram/rockchip/sdram_rk3576.c b/drivers/ram/rockchip/sdram_rk3576.c
+index 5a66032ef8f..502dcaeacab 100644
+--- a/drivers/ram/rockchip/sdram_rk3576.c
++++ b/drivers/ram/rockchip/sdram_rk3576.c
+@@ -1,20 +1,657 @@
+ // SPDX-License-Identifier: GPL-2.0+
+ /*
+- * (C) Copyright 2024 Rockchip Electronics Co., Ltd.
++ * RK3576 DRAM controller + PHY driver.
++ *
++ * Implements LPDDR4/4X/5 initialization without Rockchip DDR blob.
++ * TPL (CONFIG_XPL_BUILD) section: full init sequence.
++ * SPL / U-Boot proper section: read back geometry from PMU1GRF.
++ *
++ * TRM references:
++ *   §7.6.2  LPDDR4/4X software initialization procedure (37 steps)
++ *   §7.6.3  LPDDR5 software initialization procedure (42 steps)
++ *   §7.4.6  DDRPHY detail register descriptions (pp.808-980)
++ *   §7.4.3  DDRCTL register field descriptions
++ *
++ * Template: RK3568 RFC series 20260517-rk3568-raminit-v1 (Pavel Golikov)
++ * RK3576 divergence: newer LPDDR4/4X/5 combo PHY with hardware training
++ * engine (phy_train_en / phy_train_done) — no Synopsys training firmware.
+  */
+ 
++#include <config.h>
+ #include <dm.h>
+ #include <ram.h>
++#include <syscon.h>
++#include <asm/io.h>
++#include <asm/arch-rockchip/clock.h>
+ #include <asm/arch-rockchip/sdram.h>
++#include <asm/arch-rockchip/sdram_rk3576.h>
++#include <linux/delay.h>
+ 
+-#define PMU1GRF_BASE			0x26026000
+-#define OS_REG2_REG			0x208
++/* -----------------------------------------------------------------------
++ * TPL section — full DDRCTL + DDRPHY initialization
++ * -----------------------------------------------------------------------
++ */
++
++#if defined(CONFIG_TPL_BUILD) || \
++	(!defined(CONFIG_TPL) && defined(CONFIG_XPL_BUILD))
++
++/*
++ * Precalculated timing tables for supported DRAM configurations.
++ * Each .inc file contributes one or more rk3576_sdram_params entries.
++ * W8 / W9 work items.
++ */
++static const struct rk3576_sdram_params sdram_configs[] = {
++#if defined(CONFIG_RAM_ROCKCHIP_LPDDR5)
++# include "sdram-rk3576-lpddr5-detect-2133.inc"
++#endif
++#if defined(CONFIG_RAM_ROCKCHIP_LPDDR4)
++# include "sdram-rk3576-lpddr4-detect-1560.inc"
++#endif
++};
++
++/* -----------------------------------------------------------------------
++ * SWCTL protocol — every quasi-dynamic DDRCTL register write must use:
++ *   swctl_unlock → write register(s) → swctl_lock
++ * (TRM §7.4.3 DDRCTL_SWCTL / DDRCTL_SWSTAT)
++ * -----------------------------------------------------------------------
++ */
++
++static void swctl_unlock(void __iomem *ctl)
++{
++	writel(0, ctl + DDRCTL_SWCTL);
++}
++
++static void swctl_lock(void __iomem *ctl)
++{
++	writel(SWCTL_SW_DONE, ctl + DDRCTL_SWCTL);
++	while (!(readl(ctl + DDRCTL_SWSTAT) & SWSTAT_SW_DONE_ACK))
++		;
++}
++
++/* -----------------------------------------------------------------------
++ * DDR_GRF write helper — Rockchip write-mask convention:
++ *   bits[31:16] are the write-enable mask for bits[15:0]
++ * -----------------------------------------------------------------------
++ */
++
++static void grf_writemask(void __iomem *grf, u32 off, u32 mask, u32 val)
++{
++	writel((mask << 16) | (val & mask), grf + off);
++}
++
++/* -----------------------------------------------------------------------
++ * DDRPHY 2x clock gate control via DDR_GRF (TRM §7.6.2 steps 12/30/34)
++ * Applies to both PHY_CON0 and PHY_CON1 for the given channel.
++ * enable=1: clock flows; enable=0: gate before frequency change.
++ * -----------------------------------------------------------------------
++ */
++
++static void phy_clkgate_set(void __iomem *grf, int ch, int enable)
++{
++	u32 con0 = ch ? DDR_GRF_CHB_PHY_CON0 : DDR_GRF_CHA_PHY_CON0;
++	u32 con1 = ch ? DDR_GRF_CHB_PHY_CON1 : DDR_GRF_CHA_PHY_CON1;
++	u32 val = enable ? PHY_CON_DDRPHY2XCLKGATE_EN : 0;
++
++	grf_writemask(grf, con0, PHY_CON_DDRPHY2XCLKGATE_EN, val);
++	grf_writemask(grf, con1, PHY_CON_DDRPHY2XCLKGATE_EN, val);
++}
++
++/* -----------------------------------------------------------------------
++ * dfi_init_complete source mux via DDR_GRF (TRM §7.6.2 step 31)
++ *
++ * Before turning MDLL on (ctrl_dll_on=1), dfi_init_complete must be
++ * sourced from DDR_GRF rather than from the PHY, because MDLL power-on
++ * will momentarily pull dfi_init_complete low, which would confuse DDRCTL.
++ *
++ * from_grf=1: set GRF_CHA/CHB_DDRPHY_CON0[5:4] = 0b11 (both bits)
++ * from_grf=0: clear bit[4] (restore normal DDRCTL-driven path)
++ * -----------------------------------------------------------------------
++ */
++
++static void grf_dfi_init_comp_sel(void __iomem *grf, int ch, int from_grf)
++{
++	u32 reg = ch ? GRF_CHB_DDRPHY_CON0 : GRF_CHA_DDRPHY_CON0;
++
++	if (from_grf) {
++		/*
++		 * TRM step 31: set bit[5] first, then bit[4].
++		 * Both bits together select the GRF-driven path.
++		 */
++		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL_MASK,
++			      DDRPHY_CON0_DFI_INIT_COMP_FROM_PHY);
++	} else {
++		/* Step 34: clear bit[4] to restore DDRCTL DFI output */
++		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL_MASK, 0);
++	}
++}
++
++/* -----------------------------------------------------------------------
++ * DDRPHY mode registers (TRM §7.6.2 step 11 / §7.6.3 step 11)
++ *
++ * GNR_CON0.ctrl_ddr_mode:  0=LPDDR4, 2=LPDDR5
++ * CLKMODE_CON.ctrl_phy_mode: 1=LPDDR4 1:2:2, 4=LPDDR5 1:1:4
++ * CLKMODE_CON.ctrl_phy_clk_2x: always 1 (PHY 2x clock enabled)
++ * -----------------------------------------------------------------------
++ */
++
++static void phy_set_mode(void __iomem *phy, unsigned int dram_type)
++{
++	u32 gnr_mode, clkmode;
++
++	if (dram_type == LPDDR5) {
++		/* GNR_CON0: ctrl_ddr_mode=2, wdqs_oen_mode=1 (TRM p.808/821) */
++		gnr_mode = GNR_CON0_DDR_MODE_LPDDR5 | GNR_CON0_WDQS_OEN_MODE;
++		/* CLKMODE_CON: 1:1:4 CLK_DFI:CK:WCK (Flipper One mode) */
++		clkmode = CLKMODE_CON_PHY_CLK_2X | CLKMODE_CON_PHY_MODE_LP5_1_4;
++	} else {
++		/* LPDDR4/4X: ctrl_ddr_mode=0, 1:2:2 ratio */
++		gnr_mode = GNR_CON0_DDR_MODE_LPDDR4;
++		clkmode = CLKMODE_CON_PHY_CLK_2X | CLKMODE_CON_PHY_MODE_LPDDR4;
++	}
++
++	clrsetbits_le32(phy + DDRPHY_GNR_CON0,
++			GNR_CON0_CTRL_DDR_MODE_MASK | GNR_CON0_WDQS_OEN_MODE,
++			gnr_mode);
++	clrsetbits_le32(phy + DDRPHY_CLKMODE_CON,
++			CLKMODE_CON_PHY_CLK_2X | CLKMODE_CON_PHY_MODE_MASK,
++			clkmode);
++}
++
++/* -----------------------------------------------------------------------
++ * DDRCTL: write per-frequency timing registers (TRM §7.6.2 step 15)
++ * Must be called for each of the RK3576_DDRCTL_NFREQS frequency sets.
++ * -----------------------------------------------------------------------
++ */
++
++static void ctl_set_freq_params(void __iomem *ctl, int fi,
++				const struct rk3576_ddrctl_freq_params *p)
++{
++	u32 b = DDRCTL_FREQ_BASE(fi);
++
++#define WF(r, v)	writel((v), ctl + b + (r))
++	WF(DDRCTL_DRAMSET1TMG0,  p->dramset1tmg0);
++	WF(DDRCTL_DRAMSET1TMG1,  p->dramset1tmg1);
++	WF(DDRCTL_DRAMSET1TMG2,  p->dramset1tmg2);
++	WF(DDRCTL_DRAMSET1TMG3,  p->dramset1tmg3);
++	WF(DDRCTL_DRAMSET1TMG4,  p->dramset1tmg4);
++	WF(DDRCTL_DRAMSET1TMG5,  p->dramset1tmg5);
++	WF(DDRCTL_DRAMSET1TMG6,  p->dramset1tmg6);
++	WF(DDRCTL_DRAMSET1TMG7,  p->dramset1tmg7);
++	WF(DDRCTL_DRAMSET1TMG8,  p->dramset1tmg8);
++	WF(DDRCTL_DRAMSET1TMG9,  p->dramset1tmg9);
++	WF(DDRCTL_DRAMSET1TMG12, p->dramset1tmg12);
++	WF(DDRCTL_DRAMSET1TMG13, p->dramset1tmg13);
++	WF(DDRCTL_DRAMSET1TMG14, p->dramset1tmg14);
++	WF(DDRCTL_DRAMSET1TMG23, p->dramset1tmg23);
++	WF(DDRCTL_DRAMSET1TMG24, p->dramset1tmg24);
++	WF(DDRCTL_DRAMSET1TMG25, p->dramset1tmg25);
++	WF(DDRCTL_DRAMSET1TMG30, p->dramset1tmg30);
++	WF(DDRCTL_INITMR0,       p->initmr0);
++	WF(DDRCTL_INITMR1,       p->initmr1);
++	WF(DDRCTL_INITMR2,       p->initmr2);
++	WF(DDRCTL_INITMR3,       p->initmr3);
++	WF(DDRCTL_DFITMG0,       p->dfitmg0);
++	WF(DDRCTL_DFITMG1,       p->dfitmg1);
++	WF(DDRCTL_DFITMG2,       p->dfitmg2);
++	WF(DDRCTL_DFITMG4,       p->dfitmg4);
++	WF(DDRCTL_DFITMG5,       p->dfitmg5);
++	WF(DDRCTL_DFILPTMG0,     p->dfilptmg0);
++	WF(DDRCTL_DFILPTMG1,     p->dfilptmg1);
++	WF(DDRCTL_DFIUPDTMG0,    p->dfiupdtmg0);
++	WF(DDRCTL_DFIUPDTMG1,    p->dfiupdtmg1);
++	WF(DDRCTL_DFIMSGTMG0,    p->dfimsgtmg0);
++	WF(DDRCTL_RFSHSET1TMG0,  p->rfshset1tmg0);
++	WF(DDRCTL_RFSHSET1TMG1,  p->rfshset1tmg1);
++	WF(DDRCTL_RFSHSET1TMG2,  p->rfshset1tmg2);
++	WF(DDRCTL_RFSHSET1TMG4,  p->rfshset1tmg4);
++	WF(DDRCTL_ZQSET1TMG0,    p->zqset1tmg0);
++	WF(DDRCTL_ZQSET1TMG1,    p->zqset1tmg1);
++	WF(DDRCTL_PERFHPR1,      p->perfhpr1);
++	WF(DDRCTL_PERFLPR1,      p->perflpr1);
++	WF(DDRCTL_PERFWR1,       p->perfwr1);
++	WF(DDRCTL_RANKTMG0,      p->ranktmg0);
++	WF(DDRCTL_RANKTMG1,      p->ranktmg1);
++	WF(DDRCTL_PWRTMG,        p->pwrtmg);
++#undef WF
++}
++
++/* -----------------------------------------------------------------------
++ * DDRCTL: write global (static) registers (TRM §7.6.2 step 15)
++ * These are programmed once and are not per-frequency.
++ * -----------------------------------------------------------------------
++ */
++
++static void ctl_set_global_params(void __iomem *ctl,
++				  const struct rk3576_ddrctl_global_params *g)
++{
++	writel(g->mstr0,      ctl + DDRCTL_MSTR0);
++	writel(g->rankctl,    ctl + DDRCTL_RANKCTL);
++	writel(g->dbictl,     ctl + DDRCTL_DBICTL);
++	writel(g->odtmap,     ctl + DDRCTL_ODTMAP);
++	writel(g->inittmg0,   ctl + DDRCTL_INITTMG0);
++	writel(g->inittmg1,   ctl + DDRCTL_INITTMG1);
++	writel(g->rfshmod0,   ctl + DDRCTL_RFSHMOD0);
++	writel(g->sched0,     ctl + DDRCTL_SCHED0);
++	writel(g->sched1,     ctl + DDRCTL_SCHED1);
++	writel(g->sched3,     ctl + DDRCTL_SCHED3);
++	writel(g->sched4,     ctl + DDRCTL_SCHED4);
++	writel(g->dfilpcfg0,  ctl + DDRCTL_DFILPCFG0);
++	writel(g->dfiupd0,    ctl + DDRCTL_DFIUPD0);
++	writel(g->dfiphymstr, ctl + DDRCTL_DFIPHYMSTR);
++	writel(g->zqctl0,     ctl + DDRCTL_ZQCTL0);
++	writel(g->zqctl1,     ctl + DDRCTL_ZQCTL1);
++}
++
++/* -----------------------------------------------------------------------
++ * DDRPHY MDLL turn-on and locking (TRM §7.6.2 steps 32-33 / §7.6.3 36-37)
++ *
++ * Protocol: set ctrl_dll_on, pulse ctrl_start 0→1, poll ctrl_locked.
++ * -----------------------------------------------------------------------
++ */
++
++static void phy_mdll_lock(void __iomem *phy)
++{
++	/* Step 32/36: turn on master DLL */
++	setbits_le32(phy + DDRPHY_MDLL_CON0, MDLL_CON0_CTRL_DLL_ON);
++
++	/* Step 33/37: start locking — ctrl_start 0 → 1 */
++	clrbits_le32(phy + DDRPHY_MDLL_CON0, MDLL_CON0_CTRL_START);
++	setbits_le32(phy + DDRPHY_MDLL_CON0, MDLL_CON0_CTRL_START);
++
++	/* Poll for stable DLL lock (TRM p.835: ctrl_locked is stable lock) */
++	while (!(readl(phy + DDRPHY_MDLL_CON1) & MDLL_CON1_CTRL_LOCKED))
++		;
++}
++
++/* -----------------------------------------------------------------------
++ * PHY hardware training engine (TRM §7.6.4 LP4 / §7.6.5 LP5)
++ *
++ * Hardware engine performs: write levelling → gate training → read/write
++ * training automatically when phy_train_en is asserted.
++ * -----------------------------------------------------------------------
++ */
++
++static int phy_train(void __iomem *phy)
++{
++	setbits_le32(phy + DDRPHY_SCHD_TRAIN_CON0, TRAIN_CON0_PHY_TRAIN_EN);
++	while (!(readl(phy + DDRPHY_SCHD_TRAIN_CON0) & TRAIN_CON0_PHY_TRAIN_DONE))
++		;
++	clrbits_le32(phy + DDRPHY_SCHD_TRAIN_CON0, TRAIN_CON0_PHY_TRAIN_EN);
++
++	if (readl(phy + DDRPHY_CAL_FAIL_STAT0) & CAL_FAIL_STAT0_ANY_FAIL)
++		return -EIO;
++
++	return 0;
++}
++
++/* -----------------------------------------------------------------------
++ * Post-training PHY settings (TRM §7.6.2 step 37 / §7.6.3 step 42)
++ * -----------------------------------------------------------------------
++ */
++
++static void phy_post_training(void __iomem *phy)
++{
++	/* Re-enable DLL auto-locking (clkm_cg_en_sw back to 0) */
++	clrbits_le32(phy + DDRPHY_MDLL_CON0, MDLL_CON0_CLKM_CG_EN_SW);
++
++	/* Cycle-based write training off for normal operation */
++	clrbits_le32(phy + DDRPHY_CAL_CON5, CAL_CON5_WRTRN_CYC_MODE);
++
++	/* Enable VT compensation (tracks on-chip voltage/temp variation) */
++	setbits_le32(phy + DDRPHY_CAL_CON0, CAL_CON0_CAL_VTC_EN);
++
++	/*
++	 * Re-interpret future dfi_lvl_periodic=0 write training as DVFS
++	 * write training (searches tDQS2DQ variation, not full window).
++	 */
++	setbits_le32(phy + DDRPHY_CAL_CON0, CAL_CON0_DVFS_WR_TRAIN_EN);
++
++	/* Push DLL updates to slave DLLs: toggle ctrl_resync 0 → 1 → 0 */
++	setbits_le32(phy + DDRPHY_OFFSETD_CON0, OFFSETD_CON0_CTRL_RESYNC);
++	clrbits_le32(phy + DDRPHY_OFFSETD_CON0, OFFSETD_CON0_CTRL_RESYNC);
++}
++
++/* -----------------------------------------------------------------------
++ * ZQ impedance calibration (TRM §7.6.2 step 29 / §7.6.3 step 33)
++ *
++ * Called after DDRCTL reaches normal operating mode and before the
++ * frequency change to target speed (pp.1071/1073).
++ * -----------------------------------------------------------------------
++ */
++
++static void phy_zq_calibrate(void __iomem *phy)
++{
++	/* Enable ZQ clock divider then start manual calibration */
++	setbits_le32(phy + DDRPHY_ZQ_CON0, ZQ_CON0_ZQ_CLK_DIV_EN);
++	setbits_le32(phy + DDRPHY_ZQ_CON0, ZQ_CON0_ZQ_MANUAL_STR);
++
++	/* Poll until calibration completes */
++	while (!(readl(phy + DDRPHY_ZQ_CON1) & ZQ_CON1_ZQ_DONE))
++		;
++
++	/* Clear calibration trigger, then disable clock divider */
++	clrbits_le32(phy + DDRPHY_ZQ_CON0, ZQ_CON0_ZQ_MANUAL_STR);
++	clrbits_le32(phy + DDRPHY_ZQ_CON0, ZQ_CON0_ZQ_CLK_DIV_EN);
++}
++
++/* -----------------------------------------------------------------------
++ * Per-channel initialization
++ *
++ * Follows TRM §7.6.2 step numbering (LPDDR4/4X).
++ * Steps 1-10 (PLL, CRU resets) are performed by the SoC BootROM before
++ * TPL runs; this function starts at step 11.
++ * LPDDR5 deviations are noted at each relevant step.
++ * -----------------------------------------------------------------------
++ */
++
++static int ddr_init_channel(int ch, void __iomem *ctl, void __iomem *phy,
++			    void __iomem *grf,
++			    const struct rk3576_sdram_params *params)
++{
++	void __iomem *ddrcru;
++	unsigned int dram_type = params->base.dramtype;
++	int lpddr5 = (dram_type == LPDDR5);
++	int i, ret;
++
++	ddrcru = (void __iomem *)(ulong)(ch ? RK3576_DDR1CRU_BASE
++					    : RK3576_DDR0CRU_BASE);
++
++	/*
++	 * Step 11: Configure DDRPHY clock ratio and DRAM type mode.
++	 * GNR_CON0.ctrl_ddr_mode, CLKMODE_CON.ctrl_phy_mode/ctrl_phy_clk_2x.
++	 */
++	phy_set_mode(phy, dram_type);
++
++	/*
++	 * Steps 12-13: Frequency switch from boot clock (D0APLL, 24 MHz) to
++	 * the target frequency (D0BPLL, configured by clock driver).
++	 *
++	 * a) Disable PHY 2x clock gate before switching.
++	 * b) For LPDDR5: assert div_rst_n (prevents PHY metastability).
++	 *    TODO: div_rst_n CRU bit — needs TRM Part 1 CRU chapter.
++	 * c) Switch clock mux: DDR0/1CRU_CLKSEL_CON00[0] = 1 → D0B/D1BPLL.
++	 *    Write-mask convention: bit[16] = write-enable for bit[0].
++	 * d) For LPDDR5: de-assert div_rst_n after clock settles.
++	 * e) Re-enable PHY 2x clock gate.
++	 */
++	phy_clkgate_set(grf, ch, 0);
++	writel(BIT(16) | DDRCRU_CLKSEL_D0BPLL, ddrcru + DDRCRU_CLKSEL_CON00);
++	phy_clkgate_set(grf, ch, 1);
++
++	/*
++	 * Steps 14-16: De-assert DDRCTL and DDRPHY resets (presetn,
++	 * core_ddrc_rstn, aresetn_i). Handled by BootROM; TPL assumes
++	 * resets are already released before sdram_init() is called.
++	 * TODO: verify with logic analyser on first hardware bring-up.
++	 */
++
++	/*
++	 * Step 15: Program DDRCTL global static registers.
++	 * These must be written before core reset release in a cold-boot
++	 * scenario; on warm-boot they overwrite the previous config.
++	 */
++	ctl_set_global_params(ctl, &params->ctl);
++
++	/* Step 15: Program all 4 per-frequency timing register banks. */
++	for (i = 0; i < RK3576_DDRCTL_NFREQS; i++)
++		ctl_set_freq_params(ctl, i, &params->freq[i]);
++
++	/*
++	 * Step 17: Disable auto-refresh, self-refresh, and power-down.
++	 * Must be done while controller is in init mode (before step 26).
++	 */
++	setbits_le32(ctl + DDRCTL_RFSHCTL0, RFSHCTL0_DIS_AUTO_REFRESH);
++	clrbits_le32(ctl + DDRCTL_PWRCTL, PWRCTL_SELFREF_EN | PWRCTL_SELFREF_SW);
++
++	/*
++	 * Steps 18-20: Quasi-dynamic write — disable dfi_init_complete_en.
++	 * SWCTL=0 (unlock), write DFIMISC, SWCTL=1 (lock + wait ack).
++	 */
++	swctl_unlock(ctl);
++	clrbits_le32(ctl + DDRCTL_DFIMISC, DFIMISC_DFI_INIT_COMPLETE_EN);
++	swctl_lock(ctl);
++
++	/*
++	 * Step 21: Enable all 5 AXI ports.
++	 * DDRCTL_PCTRL(i).port_en = 1.
++	 */
++	for (i = 0; i < DDRCTL_NPORTS; i++)
++		setbits_le32(ctl + DDRCTL_PCTRL(i), PCTRL_PORT_EN);
++
++	/*
++	 * Step 22: Set DDRPHY operational registers.
++	 * Use PHY-initiated DFI update mode (upd_mode=0).
++	 * Latency and burst-length registers are at reset-safe defaults;
++	 * the W9 timing table will supply correct values via phy params.
++	 */
++	clrbits_le32(phy + DDRPHY_OFFSETD_CON0, OFFSETD_CON0_UPD_MODE);
++
++	/*
++	 * Step 23: PHY IO settings before ZQ calibration.
++	 * ctrl_pulld_dqs default (reset 0x3) keeps DQS pulled correctly.
++	 * No additional writes needed at this stage.
++	 */
++
++	/*
++	 * Step 24: DFI initialization start.
++	 *
++	 * a) For LPDDR5: force DLL lock value for low-frequency operation
++	 *    (ctrl_force = 0x2ef, per TRM §7.6.3 step 24).
++	 * b) Turn off master DLL (ctrl_dll_on = 0) on PHY.
++	 * c) Quasi-dynamic write: assert DFIMISC.dfi_init_start.
++	 *    DDRCTL then drives dfi_init_start to PHY; PHY initializes
++	 *    and responds with dfi_init_complete when ready.
++	 * d) Poll DFISTAT.dfi_init_complete = 1.
++	 */
++	if (lpddr5)
++		clrsetbits_le32(phy + DDRPHY_MDLL_CON0,
++				MDLL_CON0_CTRL_FORCE_MASK | MDLL_CON0_CTRL_DLL_ON,
++				MDLL_CON0_CTRL_FORCE_LOW_FREQ);
++	else
++		clrbits_le32(phy + DDRPHY_MDLL_CON0, MDLL_CON0_CTRL_DLL_ON);
++
++	swctl_unlock(ctl);
++	setbits_le32(ctl + DDRCTL_DFIMISC, DFIMISC_DFI_INIT_START);
++	swctl_lock(ctl);
++
++	while (!(readl(ctl + DDRCTL_DFISTAT) & DFISTAT_DFI_INIT_COMPLETE))
++		;
++
++	/*
++	 * LP5 step 26: enable software intervention before SDRAM auto-init.
++	 * MRCTRL0.sw_init_int=1 allows SW to inject MRS before the DDRCTL
++	 * init sequence starts (needed for the CS toggle in step 28).
++	 * TRM §7.6.3 step 26 (p.1073).
++	 */
++	if (lpddr5)
++		writel(MRCTRL0_SW_INIT_INT, ctl + DDRCTL_MRCTRL0);
++
++	/*
++	 * Step 25 (LP4) / Step 27 (LP5): clear dfi_init_start, enable
++	 * dfi_init_complete_en. DDRCTL now drives the DRAM init sequence
++	 * (CKE, MRS, etc.) autonomously via DFI commands.
++	 */
++	swctl_unlock(ctl);
++	clrbits_le32(ctl + DDRCTL_DFIMISC, DFIMISC_DFI_INIT_START);
++	setbits_le32(ctl + DDRCTL_DFIMISC, DFIMISC_DFI_INIT_COMPLETE_EN);
++	swctl_lock(ctl);
++
++	/*
++	 * LP5 step 28: CS toggle to assert power-down exit asynchronously.
++	 * Toggle CHA/CHB CS: 0→1 (0xFF) then 1→0 (0x00).
++	 * TRM §7.6.3 step 28 (p.1073); only the current channel's CON2.
++	 */
++	if (lpddr5) {
++		u32 con2 = ch ? DDR_GRF_CHB_CON2 : DDR_GRF_CHA_CON2;
++
++		grf_writemask(grf, con2, 0xff, 0xff);
++		grf_writemask(grf, con2, 0xff, 0x00);
++	}
++
++	/*
++	 * Step 26 (LP4) / Step 30 (LP5): wait for DDRCTL normal operating mode.
++	 * DDRCTL_STAT.operating_mode = 1.
++	 */
++	while ((readl(ctl + DDRCTL_STAT) & STAT_OPERATING_MODE_MASK) !=
++	       STAT_OPERATING_MODE_NORMAL)
++		;
++
++	/*
++	 * Steps 27-28 (LP4) / Steps 31-32 (LP5): vref and ODT settings.
++	 * Using PHY reset defaults for initial bring-up; no explicit writes.
++	 */
++
++	/*
++	 * Step 29 (LP4) / Step 33 (LP5): ZQ impedance calibration.
++	 * TRM §7.6.2 step 29 / §7.6.3 step 33 (pp.1071/1073).
++	 */
++	phy_zq_calibrate(phy);
++
++	/*
++	 * Step 30 (LP4) / Step 34 (LP5): frequency change to target speed.
++	 * DFI init protocol: gate PHY 2x clock, clear dfi_init_start, poll
++	 * dfi_init_complete=1, set dfi_init_complete_en, ungate clock.
++	 */
++	phy_clkgate_set(grf, ch, 0);
++
++	swctl_unlock(ctl);
++	clrbits_le32(ctl + DDRCTL_DFIMISC, DFIMISC_DFI_INIT_START);
++	swctl_lock(ctl);
++
++	while (!(readl(ctl + DDRCTL_DFISTAT) & DFISTAT_DFI_INIT_COMPLETE))
++		;
++
++	swctl_unlock(ctl);
++	setbits_le32(ctl + DDRCTL_DFIMISC, DFIMISC_DFI_INIT_COMPLETE_EN);
++	swctl_lock(ctl);
++
++	phy_clkgate_set(grf, ch, 1);
++
++	/*
++	 * Step 31 (LP4) / Step 35 (LP5):
++	 * Switch dfi_init_complete source to DDR_GRF.
++	 * This protects DDRCTL from the dfi_init_complete glitch that will
++	 * occur when ctrl_dll_on is asserted (MDLL power-on dip).
++	 * GRF_CHA/CHB_DDRPHY_CON0[5:4] = 0b11.
++	 */
++	grf_dfi_init_comp_sel(grf, ch, 1);
++
++	/*
++	 * Steps 32-33 (LP4) / Steps 36-37 (LP5):
++	 * Turn on DDRPHY master DLL and wait for stable lock.
++	 */
++	phy_mdll_lock(phy);
++
++	/*
++	 * Step 34 (LP4) / Step 38 (LP5):
++	 * Restore dfi_init_complete source to DDRCTL DFI output.
++	 * GRF_CHA/CHB_DDRPHY_CON0[4] = 0.
++	 */
++	grf_dfi_init_comp_sel(grf, ch, 0);
++
++	/*
++	 * Step 35 (LP4) / Step 39 (LP5): DDRPHY scheduler and LP5 settings.
++	 * ctrl_scheduler_en enables the PHY scheduler clock for normal op.
++	 * LPDDR5 additionally requires: wck_enable=1, ctrl_dqs_drv_off=1
++	 * (when write-link ECC is not in use), wdqs_oen_mode already set.
++	 */
++	setbits_le32(phy + DDRPHY_LP_CON0, LP_CON0_CTRL_SCHEDULER_EN);
++	if (lpddr5)
++		setbits_le32(phy + DDRPHY_LP_CON0,
++			     LP_CON0_WCK_ENABLE | LP_CON0_CTRL_DQS_DRV_OFF);
++
++	/*
++	 * Step 36 (LP4) / Step 41 (LP5): Hardware training.
++	 * phy_train_en=1 triggers the built-in training engine.
++	 * Engine performs: write levelling → gate → read/write training.
++	 * Poll phy_train_done=1, then clear phy_train_en.
++	 */
++	ret = phy_train(phy);
++	if (ret)
++		return ret;
++
++	/*
++	 * Step 37 (LP4) / Step 42 (LP5): Post-training settings.
++	 * clkm_cg_en_sw=0, cal_vtc_en=1, dvfs_wr_train_en=1,
++	 * toggle ctrl_resync to propagate DLL updates.
++	 */
++	phy_post_training(phy);
++
++	/*
++	 * LP5 step 42: set WCK driving policy before entering normal operation.
++	 * Using WCK always-on disabled mode: WCK_MODE_APB=0, CAS_EN_APB=1.
++	 * Both are reset defaults, but written explicitly per TRM §7.6.3 step 42
++	 * (p.1074): "Please set WCK_MODE_APB before memory normal operation."
++	 */
++	if (lpddr5) {
++		clrbits_le32(phy + DDRPHY_WCK2CKSYNC_CON0,
++			     WCK2CKSYNC_CON0_WCK_MODE_MASK);
++		setbits_le32(phy + DDRPHY_SCHD_CMD_CON0,
++			     SCHD_CMD_CON0_CAS_EN_APB);
++	}
++
++	/* Re-enable auto-refresh now that training is complete. */
++	clrbits_le32(ctl + DDRCTL_RFSHCTL0, RFSHCTL0_DIS_AUTO_REFRESH);
++
++	return 0;
++}
++
++/*
++ * sdram_init() — TPL entry point, called from arch/arm/mach-rockchip/sdram.c
++ *
++ * Initializes both DDR channels in parallel (sequential for now — parallel
++ * init would require separate PLL + GRF access which is more complex).
++ * Stores DRAM geometry in PMU1GRF OS_REG2/3 for SPL and Linux.
++ */
++int sdram_init(void)
++{
++	void __iomem *grf    = (void __iomem *)(ulong)RK3576_DDR_GRF_BASE;
++	void __iomem *ctl0   = (void __iomem *)(ulong)RK3576_DDRCTL0_BASE;
++	void __iomem *ctl1   = (void __iomem *)(ulong)RK3576_DDRCTL1_BASE;
++	void __iomem *phy0   = (void __iomem *)(ulong)RK3576_DDRPHY0_BASE;
++	void __iomem *phy1   = (void __iomem *)(ulong)RK3576_DDRPHY1_BASE;
++	void __iomem *pmugrf = (void __iomem *)(ulong)RK3576_PMU1GRF_BASE;
++	const struct rk3576_sdram_params *params;
++	u32 sys_reg2 = 0, sys_reg3 = 0;
++	int ch, ret;
++
++	if (!ARRAY_SIZE(sdram_configs))
++		return -ENODATA;
++
++	/* Single config for Flipper One; auto-detection handled post-training */
++	params = &sdram_configs[0];
++
++	ret = ddr_init_channel(0, ctl0, phy0, grf, params);
++	if (ret)
++		return ret;
++
++	ret = ddr_init_channel(1, ctl1, phy1, grf, params);
++	if (ret)
++		return ret;
++
++	/* W10: store DRAM geometry in PMU1GRF OS_REG2/3 for SPL and Linux */
++	for (ch = 0; ch < params->base.num_channels; ch++)
++		sdram_org_config(&params->ch[ch].cap_info,
++				 &params->base, &sys_reg2, &sys_reg3, ch);
++	writel(sys_reg2, pmugrf + RK3576_PMUGRF_OS_REG2);
++	writel(sys_reg3, pmugrf + RK3576_PMUGRF_OS_REG3);
++
++	return 0;
++}
++
++#endif /* CONFIG_TPL_BUILD / CONFIG_XPL_BUILD */
++
++/* -----------------------------------------------------------------------
++ * SPL / U-Boot proper driver — reads DRAM size from PMU1GRF OS_REG2
++ * (written by TPL sdram_init() above)
++ * -----------------------------------------------------------------------
++ */
+ 
+ static int rk3576_dmc_get_info(struct udevice *dev, struct ram_info *info)
+ {
+ 	info->base = CFG_SYS_SDRAM_BASE;
+-	info->size = rockchip_sdram_size(PMU1GRF_BASE + OS_REG2_REG);
+-
++	info->size = rockchip_sdram_size((phys_addr_t)(RK3576_PMU1GRF_BASE +
++						       RK3576_PMUGRF_OS_REG2));
+ 	return 0;
+ }
+ 
+@@ -28,8 +665,8 @@ static const struct udevice_id rk3576_dmc_ids[] = {
+ };
+ 
+ U_BOOT_DRIVER(rockchip_rk3576_dmc) = {
+-	.name = "rockchip_rk3576_dmc",
+-	.id = UCLASS_RAM,
+-	.of_match = rk3576_dmc_ids,
+-	.ops = &rk3576_dmc_ops,
++	.name		= "rockchip_rk3576_dmc",
++	.id		= UCLASS_RAM,
++	.of_match	= rk3576_dmc_ids,
++	.ops		= &rk3576_dmc_ops,
+ };
+-- 
+2.45.1.windows.1
+

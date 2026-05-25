@@ -1,0 +1,3110 @@
+RK3576 TRM (Part 2)
+Chapter 7 Dynamic Memory Interface (DMC)
+
+7.1 Overview
+
+The DMC includes LPDDR4/4X/5 controller (DDRCTL), DDRPHY, DDR monitor and DFI scramble, which are a complete memory interface solution for DDR memory subsystems. The DDRCTL SoC application bus interface supports AXI interface, with flexible address mapper logic allow application-specific mapping of row, column, bank, bank group and rank bits to achieve industry leading high-efficiency, low-latency and high-performance from memory interface. The DDRPHY provides control features to ease the customer implementation of digitally controlled features of the PHY such as DQS clean, read training, write training, dvfs training, periodic training and programmable configuration controls. The DMC supports the following features:  Support LPDDR4/4X/5  Support LPDDR4 protocol up to LPDDR4-4266 speed grade and LPDDR5 protocol up to
+LPDDR5-4800  Support up to 2-channel interleaving with a maximum of 16GB capacity in total, 2
+ranks for each channel  Support scalable and software-controlled 1:2:2(LPDDR4/4X) or 1:1:2/1:1:4 (LPDDR5)
+frequency ratio  Support 5 AXI ports which communicate between the SoC interconnect and DDRCTL  Support 32-bit DDR data bus width for 2-channel interleaving  Support up to 10 kinds of address mapping  Support burst16 for LPDDR4/4X/5  Support different CL/WL latency  Support 16 bank mode and BG mode for LPDDR5  Support open, close, intelligent pre-charge paging policy  Support advance refresh control  Support LPDDR4/4X/5 software controlled frequency change  Support DFI PHY master interface  Support MC-initiated requests and PHY-initiated requests interface  Support DFI data low power and ctrl low power interface  Support auto power-down or auto self-refresh power down when DDRCTL is idle for a
+period of time. The DDRCTL's core clock, DDRCTL's AXI clock and interconnect's AXI clock can be gated  Support auto or SW issue entry or exit clock stop/power-down/self-refresh/deep sleep mode  Software programmable Quality-of-Service (QoS) support  Three traffic classes on read commands--high priority reads, variable priority reads,
+and low priority reads  Two traffic classes on write commands--normal priority writes and variable priority
+writes  Port urgent and port throttling control  Dynamic scheduling inside DDRCTL to optimize bandwidth and latency  Support PMU controlled DDRPHY entry or exit IO retention mode  Support scrambling and descrambling of data written to or read from DDR SDRAM  Support DDR monitor for following features  AMBA 32-bit APB slave interface  Each DDR channel embedded with one DDR monitor module  Support to monitor DDR read or write address within 8GB address range for each
+channel  Support to observe whether DDR access address within a specified range  Support to do the following statistics during a programmed number of time through
+hardware mode or software mode  Statistics about DDR idle cycles  Statistics about SR/PD/CKSTOP/SRPD/DFI data low power/DFI ctrl low power
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+587
+
+RK3576 TRM (Part 2)
+for LPDDR4/4X  Statistics about SR/PD/CKSTOP/SRPD/DFIDLP/DFICLP/DSM for LPDDR5  Statistics about number of activate, read and write cycles for a designated rank
+or bank  Statistics about number of activate, read and write cycles for all banks and
+ranks in one DDR channel  Statistics about read to read, read to write, write to write and write to read
+page hit or page miss for a designated rank or bank  Support monitor interrupt
+7.2 Block Diagram
+Following is the 2-channel interleaving DMC block diagram. The two DDR channels are the same.
+Interconnect
+
+DDR channel 0
+
+AXI Port 0~4
+
+DDR monitor
+
+DDRCTL
+DFI interface
+DFI Scramble
+
+DDR channel 1
+
+AXI Port 0~4
+
+DDR monitor
+
+DDRCTL
+DFI interface
+DFI Scramble
+
+DDRPHY
+
+DDRPHY
+
+LPDDR4/4X/5 DRAM Device
+
+LPDDR4/4X/5 DRAM Device
+
+Fig. 7-1 DMC Block Diagram Please refer to the other chapter for more information about interconnect.
+
+7.3 Function Description
+
+7.3.1 DDRCTL
+DDRCTL supports 5 AXI Ports, it receives AXI transactions from interconnect directly. These transactions are queued internally and scheduled to the SDRAM while satisfying SDRAM protocol timing requirements. It in turn receives read data on the DFI interface from the DDRPHY block.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+588
+
+RK3576 TRM (Part 2)
+
+urgent_ctrl
+
+DDRCTL
+
+AXI AXI2HIF
+
+DFI DDRC
+
+mask_ctrl
+Fig. 7-2 DDRCTL Block Diagram DDRCTL contains the following main components.  AXI2HIF block: This block provides the AXI interfaces to system level and HIF interface
+to DDRC block. It provides bus protocol handling, data buffering, data bus size conversion and memory burst alignment. Read is stored in a read re-order buffer and return to the AXI Port.  DDRC block: This block issues the read/write commands, carries out the DRAM page management, issues DRAM maintenance commands, and implement the DFI interface. Write data is stored in an SRAM until its associated command is issued to the PHY. Read data is handled by the response engine in the DDRC and is returned on the HIF. To improve DDR performance in different scenarios, there are two modules named urgent_ctrl module and mask_ctrl module outside the DDRCTL.
+7.3.1.1 urgent_ctrl
+The function of urgent_ctrl module is to control the DDRCTL's awurgent_n/arurgent_n(n=0~4) per port according to the press_n or awqos_n/arqos_n(n=0~4) signals from interconnect module, as well as status signals such as raq_pop_n/waq_pop_n(n=0~4) from DDRCTL. For a given AXI port, there is an embedded queue for each port inside urgent_ctrl module to store arqos or awqos respectively. The queue depth is 12. The arqos or awqos queue becomes urgent if there are commands in the queue and not popped for DDR_GRF_CHA/B_CON16.press_queue_wait_limit*4 cycles. The arqos_out and awqos_out is popped at the same time as DDRCTL internal AR FIFO and AW FIFO. The value of arqos_out, awqos_out and press signals are compared to select the maximum one as the QoS of a given AXI port. Then a port priority comparison module compares the QoS of 5 AXI ports and selects the port which has the largest QoS. The arurgent is generated based on the following conditions.  The port is selected by port priority comparison module.  The arqos queue becomes urgent, arqos_out is largest of awqos_out, press and
+DDR_GRF_CHA/B_CON14.press_ar_th. If not, press should be larger than DDR_GRF_CHA/B_CON14.press_ar_th when arvalid is high and arready is low.  When write is blocked by read (the awqos queue becomes urgent inside urgent_ctrl module but read port is granted by PA(Port Arbiter) inside DDRCTL and DDR_GRF_CHA/B_CON16.press_rdwr_order is set 1'b1). The awurgent is generated based on the following conditions.  The port is selected by port priority comparison module.  The awqos queue becomes urgent, awqos_out is largest of arqos_out, press and DDR_GRF_CHA/B_CON14.press_aw_th. If not, press should be larger than DDR_GRF_CHA/B_CON14.press_aw_th when awvalid is high and awready is low.  When read is blocked by write (the arqos queue becomes urgent inside urgent_ctrl module but write port is granted by PA inside DDRCTL and DDR_GRF_CHA/B_CON16.press_rdwr_order is set 1'b1).
+7.3.1.2 mask_ctrl
+This module is instantiated outside each DDRCTL to control the arurgent_0/arurgent_1/ arurgent_2, awurgent_0/awurgent_1/ awurgent_2 of DDRCTL. It also generates signals to mask read port and write port of PA to be not granted. Following is the block diagram of mask_ctrl module.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+589
+
+RK3576 TRM (Part 2)
+
+urgent_ctrl
+
+vop_axi0_rd_urgency_out or
+
+vop_axi0_rd_urgency
+
+vop_axi1_rd_urgency_out or
+
+vop_axi1_rd_urgency mask_ctrl
+
+ebc_axi_rd_urgency
+
+ebc_axi_rd_urgency_out or
+
+DDRCTL
+arurgent[0] arurgent[1] arurgent[2]
+
+pa_rmask[9:0] pa_wmask[4:0]
+
+pa_rmask[9:0] pa_wmask[4:0]
+
+Fig. 7-3 Mask_ctrl Block Diagram The input of mask_ctrl module is from VOP and EBC. Vop_axi0_rd_urgency means AXI read port0 of VOP becoming urgent, vop_axi1_rd_urgency means AXI read port1 of VOP becoming urgent and ebc_axi_rd_urgency means AXI read port of EBC becoming urgent. The output signals vop_axi0_rd_urgency_out, vop_axi1_rd_urgency_out and ebc_axi_rd_urgency_out are synchronize to the DDRCTL's core_ddrc_core_clk. If any of these three read urgency signals are pulled high, the mask_ctrl module will mask all the other AXI read ports and mask all the AXI write ports except the one that read port is urgent (If read/write ordered is enabled, the AXI write port can't be masked when the corresponding read port is urgent). For example, if vop_axi0_rd_urgency is high, the other two are low. Then write port of AXI port 1/2/3/4 are masked (Whether can be masked is controlled by DDR_GRF_CHA/CHB_CON18[4:1]), read port of AXI port 1/2/3/4 are masked(Whether can be masked is controlled by DDR_GRF_CHA/CHB_CON17[9:2]). Whether the write port of AXI port 0 can be masked depends on the DDR_GRF_CHA/CHB_CON18[0] and DDR_GRF_CHA/CHB_CON19[0].
+7.3.2 DDRPHY
+DDRPHY supports LPDDR4/4X/5 SDRAM and provides physical interface solutions for DDRCTL requiring access to JEDEC compatible SDRAM devices. It is optimized for low power and high speed (up to 4266Mbps for LPDDR4/4X and up to 4800Mbps for LPDDR5) applications with robust timing and small silicon area. The DDRPHY has fully digital DLL for 90phase shift of strobe signal. DQS clean, read training, write training, dvfs training and
+periodic training are supported. In order to support DDR fast frequency change, there are 2 PLLs in each DDR channel. D0APLL and D0BPLL are used to provide operation clock for DDRPHY channel 0, while D1APLL and D1BPLL are used for DDRPHY channel 1. The output clock of 2 PLLs in each channel are connected to the input of a multiplexer, the output of the multiplexer drives the DDRPHY source clock clk_phy2x. During DDR frequency change period, it just needs to switch to the other PLL that has locked before without waiting for PLL lock.
+7.3.3 DFI Scramble
+The function of DFI scramble module is to scramble data written to DDR SDRAM and descramble data read from DDR SDRAM. This module is by default bypassed. If it is enabled, it receives data from DDRCTL through DFI interface, scramble written data and then send it to the DDRPHY. It also descrambles date received from DDRPHY and send it back to DDRCTL through DFI interface.
+7.3.4 DDR Monitor
+The DDR Monitor Module has four functions. The first function is used when debug, it will monitor the DDR read or write address within a specified range. The second function is used to do the statistics about DDR bandwidth and utilization. The third function is used to statistic special pattern for a designated bank or for all banks. The fourth function is used to statistic low power such as self-refresh, power down, self-refresh power down, clock stop and so on.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+590
+
+RK3576 TRM (Part 2)
+APB APB Slave Interface
+
+dfi timer dfi monitor_lp dfi monitor_plus
+nif monitor
+
+int
+
+Fig. 7-4 DDR Monitor Block Diagram The 5 AXI ports signals such as arready_n, arvalid_n, araddr_n[33:0], arid_n[7:0] and awready_n, awvalid_n, awaddr_n[33:0], awid_n[7:0](where n is 0~4) are input to the DDR Monitor. The host processor gets access to DDR Monitor Register Block through the APB slave interface, and the DDR Monitor can assert an active-high level interrupt to the host processor. DDR Monitor does the monitor and statistics by dfi monitor_plus module, nif monitor module and dfi monitor_lp module. The dfi monitor_plus module is used to statistic DDR bandwidth, utilization and special pattern for a designated bank or for all banks. The nif monitor module is used to monitor DDR read or write address within a specified range. The dfi monitor_lp module is used to statistics low power.
+
+7.4 Register Description
+
+7.4.1 Internal Address Mapping For DDRCTL
+
+Slave address can be divided into different length for different usage, which is shown as
+
+follows.
+
+Operational Base
+
+Name
+
+Base Address
+
+DDRCTL0
+
+0x28000000
+
+DDRCTL1
+
+0x29000000
+
+7.4.2 Registers Summary For DDRCTL
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_DRAMSET1TMG0 _FREQ0
+
+0x0000
+
+W
+
+0x0F101B0F
+
+SDRAM Timing Register 0 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 _FREQ0
+
+0x0004
+
+W
+
+0x00080414
+
+SDRAM Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 _FREQ0
+
+0x0008
+
+W
+
+0x0305060D
+
+SDRAM Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 _FREQ0
+
+0x000C
+
+W
+
+0x00040404
+
+SDRAM Timing Register 3 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG4 _FREQ0
+
+0x0010
+
+W
+
+0x05040405
+
+SDRAM Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG5 _FREQ0
+
+0x0014
+
+W
+
+0x05050403
+
+SDRAM Timing Register 5 belonging to Timing Set 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+591
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRCTL_DRAMSET1TMG6 _FREQ0
+
+0x0018
+
+DDRCTL_DRAMSET1TMG7 _FREQ0
+
+0x001C
+
+DDRCTL_DRAMSET1TMG8 _FREQ0
+
+0x0020
+
+DDRCTL_DRAMSET1TMG9 _FREQ0
+
+0x0024
+
+DDRCTL_DRAMSET1TMG1 2_FREQ0
+
+0x0030
+
+DDRCTL_DRAMSET1TMG1 3_FREQ0
+
+0x0034
+
+DDRCTL_DRAMSET1TMG1 4_FREQ0
+
+0x0038
+
+DDRCTL_DRAMSET1TMG2 3_FREQ0
+
+0x005C
+
+DDRCTL_DRAMSET1TMG2 4_FREQ0
+
+0x0060
+
+DDRCTL_DRAMSET1TMG2 5_FREQ0
+
+0x0064
+
+DDRCTL_DRAMSET1TMG3 0_FREQ0
+
+0x0078
+
+DDRCTL_INITMR0_FREQ0 0x0500
+
+DDRCTL_INITMR1_FREQ0 0x0504
+
+DDRCTL_INITMR2_FREQ0 0x0508
+
+DDRCTL_INITMR3_FREQ0 0x050C
+
+DDRCTL_DFITMG0_FREQ0 0x0580
+
+DDRCTL_DFITMG1_FREQ0 0x0584
+
+DDRCTL_DFITMG2_FREQ0 0x0588
+
+DDRCTL_DFITMG4_FREQ0 0x0590
+
+DDRCTL_DFITMG5_FREQ0 0x0594
+
+DDRCTL_DFILPTMG0_FRE Q0
+
+0x05A0
+
+DDRCTL_DFILPTMG1_FRE Q0
+
+0x05A4
+
+DDRCTL_DFIUPDTMG0_FR EQ0
+
+0x05A8
+
+DDRCTL_DFIUPDTMG1_FR EQ0
+
+0x05AC
+
+DDRCTL_DFIMSGTMG0_F REQ0
+
+0x05B0
+
+DDRCTL_RFSHSET1TMG0 _FREQ0
+
+0x0600
+
+DDRCTL_RFSHSET1TMG1 _FREQ0
+
+0x0604
+
+DDRCTL_RFSHSET1TMG2 _FREQ0
+
+0x0608
+
+DDRCTL_RFSHSET1TMG4 _FREQ0
+
+0x0610
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000005
+
+SDRAM Timing Register 6 belonging to Timing Set 1
+
+W
+
+0x00000000
+
+SDRAM Timing Register 7 belonging to Timing Set 1
+
+W
+
+0x00004405
+
+SDRAM Timing Register 8 belonging to Timing Set 1
+
+W
+
+0x0004040D
+
+SDRAM Timing Register 9 belonging to Timing Set 1
+
+W
+
+0x00020000
+
+SDRAM Timing Register 12 belonging to Timing Set 1
+
+W
+
+0x1C200004
+
+SDRAM Timing Register 13 belonging to Timing Set 1
+
+W
+
+0x000800A0
+
+SDRAM Timing Register 14 belonging to Timing Set 1
+
+W
+
+0x00000000
+
+SDRAM Timing Register 23 belonging to Timing Set 1
+
+W
+
+0x000F0F0F
+
+SDRAM Timing Register 24 belonging to Timing Set 1
+
+W
+
+0x00000000
+
+SDRAM Timing Register 25 belonging to Timing Set 1
+
+W
+
+0x00000000
+
+SDRAM Timing Register 30 belonging to Timing Set 1
+
+W
+
+0x00000510
+
+SDRAM Initialization MR Setting Register 0
+
+W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 1
+
+W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 2
+
+W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 3
+
+W 0x07020002 DFI Timing Register 0
+
+W 0x00000404 DFI Timing Register 1
+
+W 0x00000202 DFI Timing Register 2
+
+W 0x00000000 DFI Timing Register 4
+
+W 0x00000000 DFI Timing Register 5
+
+W 0x00000000 DFI Low Power Timing Register 0
+
+W 0x00000700 DFI Low Power Timing Register 1
+
+W 0x00400003 DFI Update Timing Register 0
+
+W 0x00010001 DFI Update Timing Register 1
+
+W
+
+0x00000004
+
+DFI MC-PHY Message Timing Register 0
+
+W
+
+0x02100062
+
+Refresh Timing Register 0 belonging to Timing Set 1
+
+W
+
+0x0000008C
+
+Refresh Timing Register 1 belonging to Timing Set 1
+
+W
+
+0x8C8C0000
+
+Refresh Timing Register 2 belonging to Timing Set 1
+
+W
+
+0x00000000
+
+Refresh Timing Register 4 belonging to Timing Set 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+592
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRCTL_ZQSET1TMG0_F REQ0
+
+0x0800
+
+DDRCTL_ZQSET1TMG1_F REQ0
+
+0x0804
+
+DDRCTL_DQSOSCCTL0_F REQ0
+
+0x0A80
+
+DDRCTL_DERATEINT_FRE Q0
+
+0x0B00
+
+DDRCTL_DERATEVAL0_FR EQ0
+
+0x0B04
+
+DDRCTL_DERATEVAL1_FR EQ0
+
+0x0B08
+
+DDRCTL_HWLPTMG0_FRE Q0
+
+0x0B80
+
+DDRCTL_SCHEDTMG0_FR EQ0
+
+0x0C00
+
+DDRCTL_PERFHPR1_FREQ 0
+
+0x0C80
+
+DDRCTL_PERFLPR1_FREQ 0
+
+0x0C84
+
+DDRCTL_PERFWR1_FREQ 0
+
+0x0C88
+
+DDRCTL_TMGCFG_FREQ0 0x0D00
+
+DDRCTL_RANKTMG0_FRE Q0
+
+0x0D04
+
+DDRCTL_RANKTMG1_FRE Q0
+
+0x0D08
+
+DDRCTL_PWRTMG_FREQ0 0x0D0C
+
+DDRCTL_MSTR0
+
+0x10000
+
+DDRCTL_MSTR2
+
+0x10008
+
+DDRCTL_MSTR4
+
+0x10010
+
+DDRCTL_STAT
+
+0x10014
+
+DDRCTL_MRCTRL0
+
+0x10080
+
+DDRCTL_MRCTRL1
+
+0x10084
+
+DDRCTL_MRSTAT
+DDRCTL_MRRDATA0 DDRCTL_MRRDATA1
+DDRCTL_DERATECTL0
+
+0x10090
+0x10094 0x10098
+0x10100
+
+DDRCTL_DERATECTL1 0x10104
+
+DDRCTL_DERATECTL2 0x10108
+
+DDRCTL_DERATECTL5 0x10114
+
+DDRCTL_DERATECTL6 0x10118
+
+DDRCTL_DERATESTAT0 0x1011C
+
+DDRCTL_DERATEDBGCTL 0x10124
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00400200
+
+ZQ Timing Register 0 belonging to DRAM ZQ timing set 1
+
+W
+
+0x02000100
+
+ZQ Timing Register 1 belonging to DRAM ZQ timing set 1
+
+W
+
+0x00000070
+
+DQS/WCK Oscillator Control Register 0
+
+W
+
+0x00800000
+
+Temperature Derate Interval Register
+
+W
+
+0x050F0504
+
+Temperature Derate Timing Register 0
+
+W
+
+0x00000014
+
+Temperature Derate Timing Register 1
+
+W
+
+0x00000000
+
+Hardware Low Power Control Register
+
+W 0x00000000 Scheduler Control Register
+
+W 0x0F000001 High Priority Read CAM Register 1
+
+W 0x0F00007F Low Priority Read CAM Register 1
+
+W 0x0F00007F Write CAM Register 1 W 0x00000000 Timing Configuration Register W 0x00000606 Rank Control Timing 0
+
+W 0x00000F0F Rank Timing Register 1
+
+W 0x00400010 Low Power Timing Register
+
+W 0x03040000 Master Register0
+
+W 0x00000000 Master Register2
+
+W 0x00000000 Master Register4
+
+W 0x00000000 Operating Mode Status Register
+
+W
+
+0x00000030
+
+Mode Register Read/Write Control Register 0.
+
+W
+
+0x00000000
+
+Mode Register Read/Write Control Register 1
+
+W
+
+0x00000000
+
+Mode Register Read/Write Status Register
+
+W 0x00000000 Mode Register Read Data 0
+
+W 0x00000000 Mode Register Read Data 1
+
+W
+
+0x00000018
+
+Temperature Derate Control Register 0
+
+W
+
+0x00000000
+
+Temperature Derate Control Register 1
+
+W
+
+0x00000000
+
+Temperature Derate Control Register 2
+
+W
+
+0x00000001
+
+Temperature Derate Control Register 5
+
+W
+
+0x00000000
+
+Temperature Derate Control Register 6
+
+W
+
+0x00000000
+
+Temperature Derate Status Register 0
+
+W
+
+0x00000000
+
+Temperature Derate Debug Contrl Register
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+593
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRCTL_DERATEDBGSTA T
+
+0x10128
+
+DDRCTL_PWRCTL
+
+0x10180
+
+DDRCTL_HWLPCTL
+
+0x10184
+
+DDRCTL_CLKGATECTL 0x1018C
+
+DDRCTL_RFSHMOD0
+
+0x10200
+
+DDRCTL_RFSHCTL0
+
+0x10208
+
+DDRCTL_ZQCTL0
+
+0x10280
+
+DDRCTL_ZQCTL1
+
+0x10284
+
+DDRCTL_ZQCTL2
+
+0x10288
+
+DDRCTL_ZQSTAT
+
+0x1028C
+
+DDRCTL_DQSOSCRUNTIM E
+
+0x10300
+
+DDRCTL_DQSOSCSTAT0 0x10304
+
+DDRCTL_DQSOSCCFG0 DDRCTL_SCHED0 DDRCTL_SCHED1 DDRCTL_SCHED3 DDRCTL_SCHED4
+
+0x10308 0x10380 0x10384 0x1038C 0x10390
+
+DDRCTL_DFILPCFG0
+
+0x10500
+
+DDRCTL_DFIUPD0
+
+0x10508
+
+DDRCTL_DFIMISC
+
+0x10510
+
+DDRCTL_DFISTAT DDRCTL_DFIPHYMSTR DDRCTL_DFI0MSGCTL0 DDRCTL_DFI0MSGSTAT0
+
+0x10514 0x10518 0x10520 0x10524
+
+DDRCTL_POISONCFG
+
+0x10580
+
+DDRCTL_POISONSTAT DDRCTL_OPCTRL0 DDRCTL_OPCTRL1 DDRCTL_OPCTRLCAM
+
+0x10584 0x10B80 0x10B84 0x10B88
+
+DDRCTL_OPCTRLCMD
+
+0x10B8C
+
+DDRCTL_OPCTRLSTAT 0x10B90
+
+DDRCTL_OPREFCTRL0 0x10B98
+
+DDRCTL_OPREFSTAT0
+
+0x10BA0
+
+DDRCTL_SWCTL
+
+0x10C80
+
+DDRCTL_SWSTAT
+DDRCTL_RANKCTL DDRCTL_DBICTL DDRCTL_ODTMAP DDRCTL_DATACTL0 DDRCTL_SWCTLSTATIC
+
+0x10C84
+0x10C90 0x10C94 0x10C9C 0x10CA0 0x10CA4
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+Temperature Derate Debug Status Register
+
+W 0x00000000 Low Power Control Register
+
+W
+
+0x00000003
+
+Hardware Low Power Control Register
+
+W 0x0000003F clock gate control
+
+W 0x00000000 Refresh Mode Register 0
+
+W 0x00000000 Refresh Control Register 0
+
+W 0x00000000 ZQ Control Register 0
+
+W 0x00000000 ZQ Control Register 1
+
+W 0x00000000 ZQ Control Register 2
+
+W 0x00000000 ZQ Status Register
+
+W
+
+0x00400040
+
+DQS/WCK Oscillator Runtime Register
+
+W
+
+0x00000000
+
+DQS/WCK Oscillator Status Register 0
+
+W 0x00000000 DQSOSC ConfigureRegister 0
+
+W 0x8001201C Scheduler Control Register 0
+
+W 0x00002000 Scheduler Control Register 1
+
+W 0x04040208 Scheduler Control Register 3
+
+W 0x08400810 Scheduler Control Register 4
+
+W
+
+0x00100000
+
+DFI Low Power Configuration Register 0
+
+W 0x00008000 DFI Update Register 0
+
+W
+
+0x00000001
+
+DFI Miscellaneous Control Register
+
+W 0x00000000 DFI Status Register
+
+W 0x80000001 DFI PHY Master
+
+W 0x00000000 DFI0 Message Control Register 0.
+
+W 0x00000000 DFI0 Message Status Register 0
+
+W
+
+0x00110011
+
+AXI Poison Configuration Register. Common for all AXI ports
+
+W 0x00000000 AXI Poison Status Register
+
+W 0x00000000 Operation Control Register 0
+
+W 0x00000000 Operation Control Register 1
+
+W 0x00000000 CAM Operation Control Register
+
+W
+
+0x00000000
+
+Command Operation Control Register
+
+W 0x00000000 Status Operation Control Register
+
+W
+
+0x00000000
+
+Refresh Operation Control Register 0
+
+W
+
+0x00000000
+
+Refresh Operation Status Register 0
+
+W
+
+0x00000001
+
+Software Register Programming Control Enable
+
+W
+
+0x00000001
+
+Software Register Programming Control Status
+
+W 0x0000000F Rank Control Register
+
+W 0x00000001 DM/DBI Control Register
+
+W 0x00002211 ODT/Rank Map Register
+
+W 0x00000000 Data Control register 0
+
+W 0x00000000 Static Registers Write Enable
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+594
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRCTL_INITTMG0
+
+0x10D00
+
+DDRCTL_INITTMG1
+
+0x10D04
+
+DDRCTL_DDRCTL_VER_N UMBER
+
+0x10FF8
+
+DDRCTL_DDRCTL_VER_TY PE
+
+0x10FFC
+
+DDRCTL_PCCFG_PORT0 0x20000
+
+DDRCTL_PCFGR_PORT0 0x20004
+
+DDRCTL_PCFGW_PORT0 0x20008
+
+DDRCTL_PCTRL_PORT0 0x20090
+
+DDRCTL_PCFGQOS0_POR T0
+
+0x20094
+
+DDRCTL_PCFGQOS1_POR T0
+
+0x20098
+
+DDRCTL_PCFGWQOS0_PO RT0
+
+0x2009C
+
+DDRCTL_PCFGWQOS1_PO RT0
+
+0x200A0
+
+DDRCTL_PSTAT_PORT0 0x20114
+
+DDRCTL_PCFGR_PORT1 0x21004
+
+DDRCTL_PCFGW_PORT1 0x21008
+
+DDRCTL_PCTRL_PORT1 0x21090
+
+DDRCTL_PCFGQOS0_POR T1
+
+0x21094
+
+DDRCTL_PCFGQOS1_POR T1
+
+0x21098
+
+DDRCTL_PCFGWQOS0_PO RT1
+
+0x2109C
+
+DDRCTL_PCFGWQOS1_PO RT1
+
+0x210A0
+
+DDRCTL_PCFGR_PORT2 0x22004
+
+DDRCTL_PCFGW_PORT2 0x22008
+
+DDRCTL_PCTRL_PORT2 0x22090
+
+DDRCTL_PCFGQOS0_POR T2
+
+0x22094
+
+DDRCTL_PCFGQOS1_POR T2
+
+0x22098
+
+DDRCTL_PCFGWQOS0_PO RT2
+
+0x2209C
+
+DDRCTL_PCFGWQOS1_PO RT2
+
+0x220A0
+
+DDRCTL_PCFGR_PORT3 0x23004
+
+DDRCTL_PCFGW_PORT3 0x23008
+
+DDRCTL_PCTRL_PORT3 0x23090
+
+DDRCTL_PCFGQOS0_POR T3
+
+0x23094
+
+DDRCTL_PCFGQOS1_POR T3
+
+0x23098
+
+DDRCTL_PCFGWQOS0_PO RT3
+
+0x2309C
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x0002004E
+
+SDRAM Initialization Timing Register 0
+
+W
+
+0x00000000
+
+SDRAM Initialization Timing Register 1
+
+W 0x3130312A DDRCTL Version Number Register
+
+W 0x6C633031 DDRCTL Version Type Register
+
+W
+
+0x00000000
+
+Port Common Configuration Register.
+
+W 0x0000501F Configuration Read Register
+
+W 0x0000501F Configuration Write Register
+
+W 0x00000000 Port Control Register
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 1
+
+W
+
+0x00000E00
+
+Port n Write QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Write QoS Configuration Register 1
+
+W 0x00000000 Port Status Register
+
+W 0x0000501F Configuration Read Register
+
+W 0x0000501F Configuration Write Register
+
+W 0x00000000 Port Control Register
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 1
+
+W
+
+0x00000E00
+
+Port n Write QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Write QoS Configuration Register 1
+
+W 0x0000501F Configuration Read Register
+
+W 0x0000501F Configuration Write Register
+
+W 0x00000000 Port Control Register
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 1
+
+W
+
+0x00000E00
+
+Port n Write QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Write QoS Configuration Register 1
+
+W 0x0000501F Configuration Read Register
+
+W 0x0000501F Configuration Write Register
+
+W 0x00000000 Port Control Register
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 0
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 1
+
+W
+
+0x00000E00
+
+Port n Write QoS Configuration Register 0
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+595
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_PCFGWQOS1_PO RT3
+
+0x230A0
+
+W
+
+0x00000000
+
+Port n Write QoS Configuration Register 1
+
+DDRCTL_PCFGR_PORT4 0x24004 W 0x0000501F Configuration Read Register
+
+DDRCTL_PCFGW_PORT4 0x24008 W 0x0000501F Configuration Write Register
+
+DDRCTL_PCTRL_PORT4 0x24090 W 0x00000000 Port Control Register
+
+DDRCTL_PCFGQOS0_POR T4
+
+0x24094
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 0
+
+DDRCTL_PCFGQOS1_POR T4
+
+0x24098
+
+W
+
+0x00000000
+
+Port n Read QoS Configuration Register 1
+
+DDRCTL_PCFGWQOS0_PO RT4
+
+0x2409C
+
+W
+
+0x00000E00
+
+Port n Write QoS Configuration Register 0
+
+DDRCTL_PCFGWQOS1_PO RT4
+
+0x240A0
+
+W
+
+0x00000000
+
+Port n Write QoS Configuration Register 1
+
+DDRCTL_ADDRMAP1
+
+0x30004 W 0x00000000 Address Map Register 1
+
+DDRCTL_ADDRMAP3
+
+0x3000C W 0x00000000 Address Map Register 3
+
+DDRCTL_ADDRMAP4
+
+0x30010 W 0x00000000 Address Map Register 4
+
+DDRCTL_ADDRMAP5
+
+0x30014 W 0x00000000 Address Map Register 5
+
+DDRCTL_ADDRMAP6
+
+0x30018 W 0x00000000 Address Map Register 6
+
+DDRCTL_ADDRMAP7
+
+0x3001C W 0x00000000 Address Map Register 7
+
+DDRCTL_ADDRMAP8
+
+0x30020 W 0x00000000 Address Map Register 8
+
+DDRCTL_ADDRMAP9
+
+0x30024 W 0x00000000 Address Map Register 9
+
+DDRCTL_ADDRMAP10
+
+0x30028 W 0x00000000 Address Map Register 10
+
+DDRCTL_ADDRMAP11
+
+0x3002C W 0x00000000 Address Map Register 11
+
+DDRCTL_ADDRMAP12
+
+0x30030 W 0x00000000 Address Map Register 12
+
+DDRCTL_DRAMSET1TMG0 _FREQ1
+
+0x100000
+
+W
+
+0x0F101B0F
+
+SDRAM Timing Register 0 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 _FREQ1
+
+0x100004
+
+W
+
+0x00080414
+
+SDRAM Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 _FREQ1
+
+0x100008
+
+W
+
+0x0305060D
+
+SDRAM Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 _FREQ1
+
+0x10000C
+
+W
+
+0x00040404
+
+SDRAM Timing Register 3 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG4 _FREQ1
+
+0x100010
+
+W
+
+0x05040405
+
+SDRAM Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG5 _FREQ1
+
+0x100014
+
+W
+
+0x05050403
+
+SDRAM Timing Register 5 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG6 _FREQ1
+
+0x100018
+
+W
+
+0x00000005
+
+SDRAM Timing Register 6 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG7 _FREQ1
+
+0x10001C
+
+W
+
+0x00000000
+
+SDRAM Timing Register 7 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG8 _FREQ1
+
+0x100020
+
+W
+
+0x00004405
+
+SDRAM Timing Register 8 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG9 _FREQ1
+
+0x100024
+
+W
+
+0x0004040D
+
+SDRAM Timing Register 9 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 2_FREQ1
+
+0x100030
+
+W
+
+0x00020000
+
+SDRAM Timing Register 12 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 3_FREQ1
+
+0x100034
+
+W
+
+0x1C200004
+
+SDRAM Timing Register 13 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 4_FREQ1
+
+0x100038
+
+W
+
+0x000800A0
+
+SDRAM Timing Register 14 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 3_FREQ1
+
+0x10005C
+
+W
+
+0x00000000
+
+SDRAM Timing Register 23 belonging to Timing Set 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+596
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_DRAMSET1TMG2 4_FREQ1
+
+0x100060
+
+W
+
+0x000F0F0F
+
+SDRAM Timing Register 24 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 5_FREQ1
+
+0x100064
+
+W
+
+0x00000000
+
+SDRAM Timing Register 25 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 0_FREQ1
+
+0x100078
+
+W
+
+0x00000000
+
+SDRAM Timing Register 30 belonging to Timing Set 1
+
+DDRCTL_INITMR0_FREQ1 0x100500 W
+
+0x00000510
+
+SDRAM Initialization MR Setting Register 0
+
+DDRCTL_INITMR1_FREQ1 0x100504 W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 1
+
+DDRCTL_INITMR2_FREQ1 0x100508 W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 2
+
+DDRCTL_INITMR3_FREQ1 0x10050C W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 3
+
+DDRCTL_DFITMG0_FREQ1 0x100580 W 0x07020002 DFI Timing Register 0
+
+DDRCTL_DFITMG1_FREQ1 0x100584 W 0x00000404 DFI Timing Register 1
+
+DDRCTL_DFITMG2_FREQ1 0x100588 W 0x00000202 DFI Timing Register 2
+
+DDRCTL_DFITMG4_FREQ1 0x100590 W 0x00000000 DFI Timing Register 4
+
+DDRCTL_DFITMG5_FREQ1 0x100594 W 0x00000000 DFI Timing Register 5
+
+DDRCTL_DFIUPDTMG1_FR EQ1
+
+0x1005AC
+
+W
+
+0x00010001 DFI Update Timing Register 1
+
+DDRCTL_RFSHSET1TMG0 _FREQ1
+
+0x100600
+
+W
+
+0x02100062
+
+Refresh Timing Register 0 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG1 _FREQ1
+
+0x100604
+
+W
+
+0x0000008C
+
+Refresh Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG2 _FREQ1
+
+0x100608
+
+W
+
+0x8C8C0000
+
+Refresh Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG4 _FREQ1
+
+0x100610
+
+W
+
+0x00000000
+
+Refresh Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_ZQSET1TMG0_F REQ1
+
+0x100800
+
+W
+
+0x00400200
+
+ZQ Timing Register 0 belonging to DRAM ZQ timing set 1
+
+DDRCTL_ZQSET1TMG1_F REQ1
+
+0x100804
+
+W
+
+0x02000100
+
+ZQ Timing Register 1 belonging to DRAM ZQ timing set 1
+
+DDRCTL_DQSOSCCTL0_F REQ1
+
+0x100A80
+
+W
+
+0x00000070
+
+DQS/WCK Oscillator Control Register 0
+
+DDRCTL_DERATEINT_FRE Q1
+
+0x100B00
+
+W
+
+0x00800000
+
+Temperature Derate Interval Register
+
+DDRCTL_DERATEVAL0_FR EQ1
+
+0x100B04
+
+W
+
+0x050F0504
+
+Temperature Derate Timing Register 0
+
+DDRCTL_DERATEVAL1_FR EQ1
+
+0x100B08
+
+W
+
+0x00000014
+
+Temperature Derate Timing Register 1
+
+DDRCTL_HWLPTMG0_FRE Q1
+
+0x100B80
+
+W
+
+0x00000000
+
+Hardware Low Power Control Register
+
+DDRCTL_SCHEDTMG0_FR EQ1
+
+0x100C00
+
+W
+
+0x00000000 Scheduler Control Register
+
+DDRCTL_PERFHPR1_FREQ 1
+
+0x100C80
+
+W
+
+0x0F000001 High Priority Read CAM Register 1
+
+DDRCTL_PERFLPR1_FREQ 1
+
+0x100C84
+
+W
+
+0x0F00007F Low Priority Read CAM Register 1
+
+DDRCTL_PERFWR1_FREQ 1
+
+0x100C88
+
+W
+
+0x0F00007F Write CAM Register 1
+
+DDRCTL_TMGCFG_FREQ1 0x100D00 W 0x00000000 Timing Configuration Register
+
+DDRCTL_RANKTMG0_FRE Q1
+
+0x100D04
+
+W
+
+0x00000606 Rank Control Timing 0
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+597
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_RANKTMG1_FRE Q1
+
+0x100D08
+
+W
+
+0x00000F0F Rank Timing Register 1
+
+DDRCTL_PWRTMG_FREQ1 0x100D0C W 0x00400010 Low Power Timing Register
+
+DDRCTL_DRAMSET1TMG0 _FREQ2
+
+0x200000
+
+W
+
+0x0F101B0F
+
+SDRAM Timing Register 0 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 _FREQ2
+
+0x200004
+
+W
+
+0x00080414
+
+SDRAM Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 _FREQ2
+
+0x200008
+
+W
+
+0x0305060D
+
+SDRAM Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 _FREQ2
+
+0x20000C
+
+W
+
+0x00040404
+
+SDRAM Timing Register 3 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG4 _FREQ2
+
+0x200010
+
+W
+
+0x05040405
+
+SDRAM Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG5 _FREQ2
+
+0x200014
+
+W
+
+0x05050403
+
+SDRAM Timing Register 5 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG6 _FREQ2
+
+0x200018
+
+W
+
+0x00000005
+
+SDRAM Timing Register 6 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG7 _FREQ2
+
+0x20001C
+
+W
+
+0x00000000
+
+SDRAM Timing Register 7 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG8 _FREQ2
+
+0x200020
+
+W
+
+0x00004405
+
+SDRAM Timing Register 8 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG9 _FREQ2
+
+0x200024
+
+W
+
+0x0004040D
+
+SDRAM Timing Register 9 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 2_FREQ2
+
+0x200030
+
+W
+
+0x00020000
+
+SDRAM Timing Register 12 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 3_FREQ2
+
+0x200034
+
+W
+
+0x1C200004
+
+SDRAM Timing Register 13 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 4_FREQ2
+
+0x200038
+
+W
+
+0x000800A0
+
+SDRAM Timing Register 14 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 3_FREQ2
+
+0x20005C
+
+W
+
+0x00000000
+
+SDRAM Timing Register 23 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 4_FREQ2
+
+0x200060
+
+W
+
+0x000F0F0F
+
+SDRAM Timing Register 24 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 5_FREQ2
+
+0x200064
+
+W
+
+0x00000000
+
+SDRAM Timing Register 25 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 0_FREQ2
+
+0x200078
+
+W
+
+0x00000000
+
+SDRAM Timing Register 30 belonging to Timing Set 1
+
+DDRCTL_INITMR0_FREQ2 0x200500 W
+
+0x00000510
+
+SDRAM Initialization MR Setting Register 0
+
+DDRCTL_INITMR1_FREQ2 0x200504 W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 1
+
+DDRCTL_INITMR2_FREQ2 0x200508 W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 2
+
+DDRCTL_INITMR3_FREQ2 0x20050C W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 3
+
+DDRCTL_DFITMG0_FREQ2 0x200580 W 0x07020002 DFI Timing Register 0
+
+DDRCTL_DFITMG1_FREQ2 0x200584 W 0x00000404 DFI Timing Register 1
+
+DDRCTL_DFITMG2_FREQ2 0x200588 W 0x00000202 DFI Timing Register 2
+
+DDRCTL_DFITMG4_FREQ2 0x200590 W 0x00000000 DFI Timing Register 4
+
+DDRCTL_DFITMG5_FREQ2 0x200594 W 0x00000000 DFI Timing Register 5
+
+DDRCTL_DFIUPDTMG1_FR EQ2
+
+0x2005AC
+
+W
+
+0x00010001 DFI Update Timing Register 1
+
+DDRCTL_RFSHSET1TMG0 _FREQ2
+
+0x200600
+
+W
+
+0x02100062
+
+Refresh Timing Register 0 belonging to Timing Set 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+598
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_RFSHSET1TMG1 _FREQ2
+
+0x200604
+
+W
+
+0x0000008C
+
+Refresh Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG2 _FREQ2
+
+0x200608
+
+W
+
+0x8C8C0000
+
+Refresh Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG4 _FREQ2
+
+0x200610
+
+W
+
+0x00000000
+
+Refresh Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_ZQSET1TMG0_F REQ2
+
+0x200800
+
+W
+
+0x00400200
+
+ZQ Timing Register 0 belonging to DRAM ZQ timing set 1
+
+DDRCTL_ZQSET1TMG1_F REQ2
+
+0x200804
+
+W
+
+0x02000100
+
+ZQ Timing Register 1 belonging to DRAM ZQ timing set 1
+
+DDRCTL_DQSOSCCTL0_F REQ2
+
+0x200A80
+
+W
+
+0x00000070
+
+DQS/WCK Oscillator Control Register 0
+
+DDRCTL_DERATEINT_FRE Q2
+
+0x200B00
+
+W
+
+0x00800000
+
+Temperature Derate Interval Register
+
+DDRCTL_DERATEVAL0_FR EQ2
+
+0x200B04
+
+W
+
+0x050F0504
+
+Temperature Derate Timing Register 0
+
+DDRCTL_DERATEVAL1_FR EQ2
+
+0x200B08
+
+W
+
+0x00000014
+
+Temperature Derate Timing Register 1
+
+DDRCTL_HWLPTMG0_FRE Q2
+
+0x200B80
+
+W
+
+0x00000000
+
+Hardware Low Power Control Register
+
+DDRCTL_SCHEDTMG0_FR EQ2
+
+0x200C00
+
+W
+
+0x00000000 Scheduler Control Register
+
+DDRCTL_PERFHPR1_FREQ 2
+
+0x200C80
+
+W
+
+0x0F000001 High Priority Read CAM Register 1
+
+DDRCTL_PERFLPR1_FREQ 2
+
+0x200C84
+
+W
+
+0x0F00007F Low Priority Read CAM Register 1
+
+DDRCTL_PERFWR1_FREQ 2
+
+0x200C88
+
+W
+
+0x0F00007F Write CAM Register 1
+
+DDRCTL_TMGCFG_FREQ2 0x200D00 W 0x00000000 Timing Configuration Register
+
+DDRCTL_RANKTMG0_FRE Q2
+
+0x200D04
+
+W
+
+0x00000606 Rank Control Timing 0
+
+DDRCTL_RANKTMG1_FRE Q2
+
+0x200D08
+
+W
+
+0x00000F0F Rank Timing Register 1
+
+DDRCTL_PWRTMG_FREQ2 0x200D0C W 0x00400010 Low Power Timing Register
+
+DDRCTL_DRAMSET1TMG0 _FREQ3
+
+0x300000
+
+W
+
+0x0F101B0F
+
+SDRAM Timing Register 0 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 _FREQ3
+
+0x300004
+
+W
+
+0x00080414
+
+SDRAM Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 _FREQ3
+
+0x300008
+
+W
+
+0x0305060D
+
+SDRAM Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 _FREQ3
+
+0x30000C
+
+W
+
+0x00040404
+
+SDRAM Timing Register 3 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG4 _FREQ3
+
+0x300010
+
+W
+
+0x05040405
+
+SDRAM Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG5 _FREQ3
+
+0x300014
+
+W
+
+0x05050403
+
+SDRAM Timing Register 5 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG6 _FREQ3
+
+0x300018
+
+W
+
+0x00000005
+
+SDRAM Timing Register 6 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG7 _FREQ3
+
+0x30001C
+
+W
+
+0x00000000
+
+SDRAM Timing Register 7 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG8 _FREQ3
+
+0x300020
+
+W
+
+0x00004405
+
+SDRAM Timing Register 8 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG9 _FREQ3
+
+0x300024
+
+W
+
+0x0004040D
+
+SDRAM Timing Register 9 belonging to Timing Set 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+599
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_DRAMSET1TMG1 2_FREQ3
+
+0x300030
+
+W
+
+0x00020000
+
+SDRAM Timing Register 12 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 3_FREQ3
+
+0x300034
+
+W
+
+0x1C200004
+
+SDRAM Timing Register 13 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG1 4_FREQ3
+
+0x300038
+
+W
+
+0x000800A0
+
+SDRAM Timing Register 14 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 3_FREQ3
+
+0x30005C
+
+W
+
+0x00000000
+
+SDRAM Timing Register 23 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 4_FREQ3
+
+0x300060
+
+W
+
+0x000F0F0F
+
+SDRAM Timing Register 24 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG2 5_FREQ3
+
+0x300064
+
+W
+
+0x00000000
+
+SDRAM Timing Register 25 belonging to Timing Set 1
+
+DDRCTL_DRAMSET1TMG3 0_FREQ3
+
+0x300078
+
+W
+
+0x00000000
+
+SDRAM Timing Register 30 belonging to Timing Set 1
+
+DDRCTL_INITMR0_FREQ3 0x300500 W
+
+0x00000510
+
+SDRAM Initialization MR Setting Register 0
+
+DDRCTL_INITMR1_FREQ3 0x300504 W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 1
+
+DDRCTL_INITMR2_FREQ3 0x300508 W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 2
+
+DDRCTL_INITMR3_FREQ3 0x30050C W
+
+0x00000000
+
+SDRAM Initialization MR Setting Register 3
+
+DDRCTL_DFITMG0_FREQ3 0x300580 W 0x07020002 DFI Timing Register 0
+
+DDRCTL_DFITMG1_FREQ3 0x300584 W 0x00000404 DFI Timing Register 1
+
+DDRCTL_DFITMG2_FREQ3 0x300588 W 0x00000202 DFI Timing Register 2
+
+DDRCTL_DFITMG4_FREQ3 0x300590 W 0x00000000 DFI Timing Register 4
+
+DDRCTL_DFITMG5_FREQ3 0x300594 W 0x00000000 DFI Timing Register 5
+
+DDRCTL_DFIUPDTMG1_FR EQ3
+
+0x3005AC
+
+W
+
+0x00010001 DFI Update Timing Register 1
+
+DDRCTL_RFSHSET1TMG0 _FREQ3
+
+0x300600
+
+W
+
+0x02100062
+
+Refresh Timing Register 0 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG1 _FREQ3
+
+0x300604
+
+W
+
+0x0000008C
+
+Refresh Timing Register 1 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG2 _FREQ3
+
+0x300608
+
+W
+
+0x8C8C0000
+
+Refresh Timing Register 2 belonging to Timing Set 1
+
+DDRCTL_RFSHSET1TMG4 _FREQ3
+
+0x300610
+
+W
+
+0x00000000
+
+Refresh Timing Register 4 belonging to Timing Set 1
+
+DDRCTL_ZQSET1TMG0_F REQ3
+
+0x300800
+
+W
+
+0x00400200
+
+ZQ Timing Register 0 belonging to DRAM ZQ timing set 1
+
+DDRCTL_ZQSET1TMG1_F REQ3
+
+0x300804
+
+W
+
+0x02000100
+
+ZQ Timing Register 1 belonging to DRAM ZQ timing set 1
+
+DDRCTL_DQSOSCCTL0_F REQ3
+
+0x300A80
+
+W
+
+0x00000070
+
+DQS/WCK Oscillator Control Register 0
+
+DDRCTL_DERATEINT_FRE Q3
+
+0x300B00
+
+W
+
+0x00800000
+
+Temperature Derate Interval Register
+
+DDRCTL_DERATEVAL0_FR EQ3
+
+0x300B04
+
+W
+
+0x050F0504
+
+Temperature Derate Timing Register 0
+
+DDRCTL_DERATEVAL1_FR EQ3
+
+0x300B08
+
+W
+
+0x00000014
+
+Temperature Derate Timing Register 1
+
+DDRCTL_HWLPTMG0_FRE Q3
+
+0x300B80
+
+W
+
+0x00000000
+
+Hardware Low Power Control Register
+
+DDRCTL_SCHEDTMG0_FR EQ3
+
+0x300C00
+
+W
+
+0x00000000 Scheduler Control Register
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+600
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRCTL_PERFHPR1_FREQ 3
+
+0x300C80
+
+W
+
+0x0F000001 High Priority Read CAM Register 1
+
+DDRCTL_PERFLPR1_FREQ 3
+
+0x300C84
+
+W
+
+0x0F00007F Low Priority Read CAM Register 1
+
+DDRCTL_PERFWR1_FREQ 3
+
+0x300C88
+
+W
+
+0x0F00007F Write CAM Register 1
+
+DDRCTL_TMGCFG_FREQ3 0x300D00 W 0x00000000 Timing Configuration Register
+
+DDRCTL_RANKTMG0_FRE Q3
+
+0x300D04
+
+W
+
+0x00000606 Rank Control Timing 0
+
+DDRCTL_RANKTMG1_FRE Q3
+
+0x300D08
+
+W
+
+0x00000F0F Rank Timing Register 1
+
+DDRCTL_PWRTMG_FREQ3 0x300D0C W 0x00400010 Low Power Timing Register
+
+Notes:Size:B- Byte (8 bits) access, HW- Half WORD (16 bits) access, W-WORD (32 bits) access, DW-
+
+Double WORD (64 bits) access
+
+7.4.3 Detail Registers Description For DDRCTL
+
+Some register fields might use the following optional attributes.
+
+Volatile: If true, indicates in the case of a write followed by read, or in the case of two
+
+consecutive reads, there is no guarantee as to what is returned by the read on the second
+
+transaction or that this return value is consistent with the write or read of the first
+
+transaction. The element implies there is some additional mechanism by which this field
+
+can acquire new values other than by reads/writes/resets. For example, when the controller
+
+updates the register field contents.
+
+Testable: Possible values are unconstrained, untestable, readOnly, writeAsRead, restore.
+
+Untestable means that this field is untestable by a simple automated register test. For
+
+example, the read-write access of the register is controlled by a pin or another register.
+
+Read only means that you should not write to this register; only read from it. This might
+
+apply for a register that modifies the contents of another register.
+
+The Programming Mode Field: The "Programming Mode" field in the description column of
+
+the register tables specifies the type of register. The DDRCTL registers belong to one of the
+
+following types.
+
+ Static: Can be written only when the controller is in reset.
+
+ Dynamic: Can be written at any time during operation.
+
+ Quasi Dynamic: Can be written when the controller is in reset and some specific
+
+conditions outside reset. Please refer to the application notes for detailed information.
+
+DDRCTL_DRAMSET1TMG0_FREQ0
+
+Address: Operational Base + offset (0x0000)
+
+Bit Attr Reset Value
+
+Description
+
+wr2pre
+
+Minimum time between write and precharge to same bank.
+
+Specifications: WL + BL/2 + tWR
+
+where:
+
+WL = write latency
+
+BL = burst length. This must match the value programmed in the
+
+BL bit of the mode register to the SDRAM. BST (burst terminate)
+
+31:24 RW 0x0f
+
+is not supported at present.
+
+tWR = Write recovery time. This comes directly from the SDRAM
+
+specification.
+
+Add one extra cycle for LPDDR4/5 for this parameter.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+601
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+t_faw
+
+tFAW:
+
+At most 4 banks must be activated in a rolling window of tFAW
+
+23:16 RW 0x10
+
+cycles. Unit: DRAM clock cycles.
+
+Value After Reset: 0x10
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+t_ras_max
+
+tRAS(max): Maximum time between activate and precharge to
+
+same bank. This is the maximum time that a page can be kept
+
+open t_ras_max must be set to
+
+15:8 RW 0x1b
+
+RoundDown(tRAS(max)/tCK/1024).
+
+Unit: 1024 DRAM clock cycles.
+
+Value After Reset: 0x1b
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+t_ras_min
+
+tRAS(min): Minimum time between activate and precharge to the
+
+same bank.
+
+7:0 RW 0x0f
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG1_FREQ0
+
+Address: Operational Base + offset (0x0004)
+
+Bit Attr Reset Value
+
+Description
+
+31:22 RO 0x000
+
+reserved
+
+t_xp
+
+tXP: Minimum time after power-down exit to any operation.
+
+LPDDR4 (tCKELPD is defined in spec): larger of tXP and tCKELPD
+
+instead.
+
+21:16 RW 0x08
+
+LPDDR4 (tCKELPD is not defined in spec): tXP. LPDDR5: tXP + tCSH
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x8
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+rd2pre
+
+tRTP: Minimum time from read to precharge of same bank.
+
+LPDDR4 - BL/2 + max(RoundUp(tRTP/tCK),8) - 8
+
+LPDDR5(BG mode): BL/n_min + RU(tRBTP/tCK)
+
+15:8 RW 0x04
+
+LPDDR5(16B mode): BL/n + RU(tRBTP/tCK)
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+t_rc
+
+tRC: Minimum time between activates to same bank.
+
+7:0 RW 0x14
+
+Unit: DRAM clock cycles. Value After Reset: 0x14
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG2_FREQ0
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+602
+
+RK3576 TRM (Part 2)
+
+Address: Operational Base + offset (0x0008)
+
+Bit Attr Reset Value
+
+Description
+
+31 RO 0x0
+
+reserved
+
+write_latency
+
+Set to WL
+
+Time from write command to write data on SDRAM interface. This
+
+must be set to WL.
+
+For all protocols, in addition to programming this register field, it
+
+30:24 RW 0x03
+
+is necessary to program DDRCTL_DFITMG0_FREQ0 and
+
+DDRCTL_DFITMG1_FREQ0 to control the read and write latencies
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x3
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+23 RO 0x0
+
+reserved
+
+read_latency
+
+Set to RL
+
+Time from read command to read data on SDRAM interface. This
+
+must be set to RL.
+
+In addition to programming this register field, it is necessary to
+
+22:16 RW 0x05
+
+program DDRCTL_DFITMG0_FREQ0 and
+
+DDRCTL_DFITMG1_FREQ0 to control the read and write latencies
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+rd2wr
+
+LPDDR4(DQ ODT is Disabled): RL + BL/2 + RU(tDQSCKmax/tCK)
+
++ WR_PREAMBLE + RD_POSTAMBLE - WL
+
+LPDDR4(DQ ODT is Enabled) : RL + BL/2 + RU(tDQSCKmax/tCK)
+
++ RD_POSTAMBLE - ODTLon - RD(tODTon(min)/tCK) + 1
+
+LPDDR5 (BG mode && DQ ODT is Disabled): RL + BL/n_max +
+
+RU(tWCKDQO(max)/tCK) - WL
+
+LPDDR5 (BG mode && DQ ODT is Enabled) : RL + BL/n_max +
+
+RU(tWCKDQO(max)/tCK) + RD(tRPST/tCK) - ODTLon -
+
+RD(tODTon(min)/tCK) + 1
+
+LPDDR5 (16B mode && DQ ODT is Disabled): RL + BL/n +
+
+RU(tWCKDQO(max)/tCK) - WL
+
+LPDDR5 (16B mode && DQ ODT is Enabled) : RL + BL/n +
+
+RU(tWCKDQO(max)/tCK) + RD(tRPST/tCK) - ODTLon -
+
+RD(tODTon(min)/tCK) + 1
+
+15:8 RW 0x06
+
+Minimum time from read command to write command. Include
+
+time for bus turnaround and all per-bank, per-rank, and global
+
+constraints.
+
+Please see the relevant PHY databook for details of what must be
+
+included here.
+
+Where:
+
+WL = write latency
+
+BL = burst length. This must match the value programmed in the
+
+BL bit of the mode register to the SDRAM
+
+RL = read latency = CAS latency
+
+WR_PREAMBLE = 1 (1tCK write preamble), 2 (2tCK write
+
+preamble).
+
+RD_POSTAMBLE = 0.5 (0.5tCK read postamble), 1.5 (1.5tCK read
+
+postamble).
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+603
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+For LPDDR4, if derating is enabled
+
+(DDRCTL_DERATECTL0_FREQ0.derate_enable=1), derated
+
+tDQSCKmax must be used.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x6
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+wr2rd
+
+LPDDR4: WL + BL/2 + tWTR + 1
+
+LPDDR5(BG mode): WL + BL/n_max + RU(tWTR_L/tCK)
+
+LPDDR5(16B mode): WL + BL/n + RU(tWTR/tCK)
+
+Minimum time from write command to read command. Includes
+
+time for bus turnaround, recovery times, and all per-bank, per-
+
+rank, and global constraints.
+
+Please see the relevant PHY databook for details of what must be
+
+included here.
+
+Where:
+
+CWL = CAS write latency
+
+WL = Write latency
+
+RW 0x0d
+
+PL = Parity latency BL = burst length. This must match the value programmed in the
+
+BL bit of the mode register to the SDRAM
+
+tWTR_L = internal write to read command delay for same bank
+
+group. This comes directly from the SDRAM specification.
+
+tWTR = internal write to read command delay. This comes
+
+directly from the SDRAM specification.
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+Add one extra cycle for LPDDR4 operation.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xd
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG3_FREQ0
+
+Address: Operational Base + offset (0x000C)
+
+Bit Attr Reset Value
+
+Description
+
+31:23 RO 0x000
+
+reserved
+
+t_mr
+
+Time from MRW/MRS to valid command
+
+LPDDR4: Set this to the larger of tMRR, tMRW, tMRWCKEL and
+
+tMRD.
+
+22:16 RW 0x04
+
+LPDDR5: Set this to the larger of tMRR, tMRW, tMRWPD and tMRD.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+604
+
+RK3576 TRM (Part 2)
+
+Bit 15:8
+7:0
+
+Attr Reset Value
+
+Description
+
+rd2mr
+
+Time from Read to MRW/MRR command.
+
+LPDDR4: RL + BL/2 + RU(tDQSCKmax/tCK) + RD(tRPST) +
+
+max(RU(7.5ns/tCK),8nCK) + nRTP - 8
+
+RW 0x04
+
+LPDDR5: RL + RU(tWCKDQO(max)/tCK)) + BL/n_max + MAX[RU(7.5ns/tCK),4nCK] + nRBTP
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+wr2mr
+
+Time from Write to MRW/MRR command.
+
+LPDDR4: WL + 1 + BL/2 + max(RU(7.5ns/tCK),8nCK) + nWR
+
+RW 0x04
+
+LPDDR5: WL + BL/n_max + MAX[RU(7.5ns/tCK),4nCK] + nWR Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG4_FREQ0
+
+Address: Operational Base + offset (0x0010)
+
+Bit Attr Reset Value
+
+Description
+
+t_rcd
+
+tRCD - tAL: Minimum time from activate to read or write
+
+command to same bank.
+
+31:24 RW 0x05
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+23:22 RO 0x0
+
+reserved
+
+t_ccd
+
+This is the minimum time between two reads or two writes.
+
+LPDDR4: tCCD
+
+21:16 RW 0x04
+
+LPDDR5: BL/n Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15:14 RO 0x0
+
+reserved
+
+t_rrd
+
+For LPDDR5(BG mode): Minimum time between activates from
+
+bank "a" to bank "b" for same bank group.
+
+For LPDDR4/LPDDR5(16B mode): Minimum time between
+
+activates from bank "a" to bank "b".
+
+13:8 RW 0x04
+
+LPDDR4: RU(tRRD/tCK) LPDDR5(BG mode): RU(tRRD_L/tCK)
+
+LPDDR5(16B mode): RU(tRRD/tCK)
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+7
+
+RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+605
+
+

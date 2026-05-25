@@ -1,0 +1,9668 @@
+RK3576 TRM (Part 2)
+
+Bit 15:0
+
+Attr Reset Value
+
+Description
+
+hpr_max_starve
+
+Number of DRAM clocks that the HPR queue can be starved
+
+before it goes critical. The minimum valid functional value for this
+
+register is 0x1. Programming it to 0x0 will disable the starvation
+
+functionality; during normal operation, this function must not be
+
+RW 0x0001
+
+disabled as it will cause excessive latencies.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x1
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+DDRCTL_PERFLPR1_FREQ2
+
+Address: Operational Base + offset (0x200C84)
+
+Bit Attr Reset Value
+
+Description
+
+lpr_xact_run_length
+
+Number of transactions that are serviced once the LPR queue
+
+goes critical is the smaller of:
+
+(a) This number
+
+31:24 RW 0x0f
+
+(b) Number of transactions available Unit: Transaction
+
+FOR PERFORMANCE ONLY.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+23:16 RO 0x00
+
+reserved
+
+lpr_max_starve
+
+Number of DRAM clocks that the LPR queue can be starved before
+
+it goes critical. The minimum valid functional value for this
+
+register is 0x1. Programming it to 0x0 will disable the starvation
+
+functionality; during normal operation, this function must not be
+
+15:0 RW 0x007f
+
+disabled as it will cause excessive latencies.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x7f
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+DDRCTL_PERFWR1_FREQ2
+
+Address: Operational Base + offset (0x200C88)
+
+Bit Attr Reset Value
+
+Description
+
+w_xact_run_length
+
+Number of transactions that are serviced once the WR queue
+
+goes critical is the smaller of:
+
+(a) This number
+
+31:24 RW 0x0f
+
+(b) Number of transactions available Unit: Transaction
+
+FOR PERFORMANCE ONLY.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+23:16 RO 0x00
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+760
+
+RK3576 TRM (Part 2)
+
+Bit 15:0
+
+Attr Reset Value
+
+Description
+
+w_max_starve
+
+Number of DRAM clocks that the WR queue can be starved before
+
+it goes critical. The minimum valid functional value for this
+
+register is 0x1. Programming it to 0x0 will disable the starvation
+
+functionality; during normal operation, this function must not be
+
+RW 0x007f
+
+disabled as it will cause excessive latencies.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x7f
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+DDRCTL_TMGCFG_FREQ2
+
+Address: Operational Base + offset (0x200D00)
+
+Bit Attr Reset Value
+
+Description
+
+31:10 RO 0x000000 reserved
+
+dfi_freq_fsp
+
+9:8 RW 0x0
+
+This register value propergates to dfi_freq_fsp pin directly. Value After Reset: 0x0
+
+Programming Mode: Dynamic
+
+7:1 RO 0x00
+
+reserved
+
+frequency_ratio
+
+Selects the Frequency Ratio
+
+For LPDDR4:
+
+1'b0: 1:2 Mode
+
+0
+
+RW 0x0
+
+1'b1: 1:4 Mode For LPDDR5:
+
+1'b0: 1:1:2 Mode
+
+1'b1: 1:1:4 Mode
+
+Value After Reset: 0x0
+
+Programming Mode: Quasi-dynamic Group 2
+
+DDRCTL_RANKTMG0_FREQ2
+
+Address: Operational Base + offset (0x200D04)
+
+Bit Attr Reset Value
+
+Description
+
+31:16 RO 0x0000
+
+reserved
+
+diff_rank_wr_gap
+
+Only present for multi-rank configurations.
+
+Indicates the number of clocks of gap in data responses when
+
+performing consecutive writes to different ranks.
+
+This is used to switch the delays in the PHY to match the rank
+
+requirements.
+
+This value must consider both PHY requirement and ODT
+
+requirement.
+
+PHY requirement:
+
+15:8 RW 0x06
+
+tphy_wrcsgap (see PHY databook for value of tphy_wrcsgap) If CRC feature is enabled, must be increased by 1.
+
+Write preamble is always set to 2tCK for LPDDR4, refer to PHY
+
+databook to see if this is already factored into tphy_wrcsgap
+
+value or if it needs to be increased by 1.
+
+If write postamble is set to 1.5tCK(LPDDR4 only), must be
+
+increased by 1.
+
+ODT requirement:
+
+The value programmed in this register takes care of the ODT
+
+switch off timing requirement when switching ranks during writes.
+
+For LPDDR4, with DQ ODT enabled, diff_rank_wr_gap must be a
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+761
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+minimum of ODTLoff - ODTLon - BL/2 + 1
+
+For other cases, diff_rank_wr_gap must be a minimum of
+
+ODTCFG.wr_odt_hold - BL/2.
+
+Program this to the larger of PHY requirement or ODT
+
+requirement.
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+board delay".
+
+Please see PHY databook for the value of tphy_wckcsgap.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x6
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2
+
+diff_rank_rd_gap
+
+Only present for multi-rank configurations.
+
+Indicates the number of clocks of gap in data responses when
+
+performing consecutive reads to different ranks.
+
+This is used to switch the delays in the PHY to match the rank
+
+requirements.
+
+This value must consider both PHY requirement and ODT
+
+requirement.
+
+PHY requirement:
+
+tphy_rdcsgap (see PHY databook for value of tphy_rdcsgap)
+
+ODT requirement:
+
+RW 0x06
+
+The value programmed in this register takes care of the ODT switch off timing requirement when switching ranks during reads:
+
+Program this to the larger of PHY requirement or ODT
+
+requirement.
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+board delay".
+
+Please see PHY databook for the value of tphy_wckcsgap.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x6
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2
+
+DDRCTL_RANKTMG1_FREQ2
+
+Address: Operational Base + offset (0x200D08)
+
+Bit Attr Reset Value
+
+Description
+
+31:16 RO 0x0000
+
+reserved
+
+rd2wr_dr
+
+Minimum time from read command to write command for
+
+different rank. Includes time for bus turnaround, recovery times,
+
+and all per-bank, per-rank, and global constraints.
+
+The value must be larger than or equal to the value of
+
+DRAMSET1TMG2.rd2wr.
+
+15:8 RW 0x0f
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+board delay"
+
+Please see PHY databook for the value of tphy_wckcsgap
+
+Unit: DRAM clock cycles
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+762
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+wr2rd_dr
+
+Minimum time from write command to read command for
+
+different rank. Includes time for bus turnaround, recovery times,
+
+and all per-bank, per-rank, and global constraints.
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+RW 0x0f
+
+board delay"
+
+Please see PHY databook for the value of tphy_wckcsgap
+
+Unit: DRAM clock cycles
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_PWRTMG_FREQ2
+
+Address: Operational Base + offset (0x200D0C)
+
+Bit Attr Reset Value
+
+Description
+
+31:26 RO 0x00
+
+reserved
+
+selfref_to_x32
+
+After this many clocks of the DDRC command channel being idle
+
+the DDRCTL automatically puts the SDRAM into Self Refresh.
+
+The DDRC command channel is considered idle when there are no
+
+HIF commands outstanding. This must be enabled in the
+
+PWRCTL.selfref_en.
+
+25:16 RW 0x040
+
+FOR PERFORMANCE ONLY. Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x40
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+15:7 RO 0x000
+
+reserved
+
+powerdown_to_x32
+
+After this many clocks of the DDRC command channel being idle
+
+the DDRCTL automatically puts the SDRAM into power-down. The
+
+DDRC command channel is considered idle when there are no HIF
+
+commands outstanding. This must be enabled in the
+
+PWRCTL.powerdown_en.
+
+6:0 RW 0x10
+
+FOR PERFORMANCE ONLY. Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x10
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+DDRCTL_DRAMSET1TMG0_FREQ3
+
+Address: Operational Base + offset (0x300000)
+
+Bit Attr Reset Value
+
+Description
+
+wr2pre
+
+Minimum time between write and precharge to same bank.
+
+Specifications: WL + BL/2 + tWR
+
+31:24 RW 0x0f
+
+where:
+
+WL = write latency
+
+BL = burst length. This must match the value programmed in the
+
+BL bit of the mode register to the SDRAM. BST (burst terminate)
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+763
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+is not supported at present.
+
+tWR = Write recovery time. This comes directly from the SDRAM
+
+specification.
+
+Add one extra cycle for LPDDR4/5 for this parameter.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+t_faw
+
+tFAW:
+
+At most 4 banks must be activated in a rolling window of tFAW
+
+23:16 RW 0x10
+
+cycles. Unit: DRAM clock cycles.
+
+Value After Reset: 0x10
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+t_ras_max
+
+tRAS(max): Maximum time between activate and precharge to
+
+same bank. This is the maximum time that a page can be kept
+
+open t_ras_max must be set to
+
+15:8 RW 0x1b
+
+RoundDown(tRAS(max)/tCK/1024).
+
+Unit: 1024 DRAM clock cycles.
+
+Value After Reset: 0x1b
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+t_ras_min
+
+tRAS(min): Minimum time between activate and precharge to the
+
+same bank.
+
+7:0 RW 0x0f
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG1_FREQ3
+
+Address: Operational Base + offset (0x300004)
+
+Bit Attr Reset Value
+
+Description
+
+31:22 RO 0x000
+
+reserved
+
+t_xp
+
+tXP: Minimum time after power-down exit to any operation.
+
+LPDDR4 (tCKELPD is defined in spec): larger of tXP and tCKELPD
+
+instead.
+
+21:16 RW 0x08
+
+LPDDR4 (tCKELPD is not defined in spec): tXP. LPDDR5: tXP + tCSH
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x8
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+rd2pre
+
+tRTP: Minimum time from read to precharge of same bank.
+
+LPDDR4 - BL/2 + max(RoundUp(tRTP/tCK),8) - 8
+
+LPDDR5(BG mode): BL/n_min + RU(tRBTP/tCK)
+
+15:8 RW 0x04
+
+LPDDR5(16B mode): BL/n + RU(tRBTP/tCK)
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+764
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+t_rc
+
+tRC: Minimum time between activates to same bank.
+
+RW 0x14
+
+Unit: DRAM clock cycles. Value After Reset: 0x14
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG2_FREQ3
+
+Address: Operational Base + offset (0x300008)
+
+Bit Attr Reset Value
+
+Description
+
+31 RO 0x0
+
+reserved
+
+write_latency
+
+Set to WL
+
+Time from write command to write data on SDRAM interface. This
+
+must be set to WL.
+
+For all protocols, in addition to programming this register field, it
+
+30:24 RW 0x03
+
+is necessary to program DDRCTL_DFITMG0_FREQ3 and
+
+DDRCTL_DFITMG1_FREQ3 to control the read and write latencies
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x3
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+23 RO 0x0
+
+reserved
+
+read_latency
+
+Set to RL
+
+Time from read command to read data on SDRAM interface. This
+
+must be set to RL.
+
+In addition to programming this register field, it is necessary to
+
+22:16 RW 0x05
+
+program DDRCTL_DFITMG0_FREQ3 and
+
+DDRCTL_DFITMG1_FREQ3 to control the read and write latencies
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+rd2wr
+
+LPDDR4(DQ ODT is Disabled): RL + BL/2 + RU(tDQSCKmax/tCK)
+
++ WR_PREAMBLE + RD_POSTAMBLE - WL
+
+LPDDR4(DQ ODT is Enabled) : RL + BL/2 + RU(tDQSCKmax/tCK)
+
++ RD_POSTAMBLE - ODTLon - RD(tODTon(min)/tCK) + 1
+
+LPDDR5 (BG mode && DQ ODT is Disabled): RL + BL/n_max +
+
+RU(tWCKDQO(max)/tCK) - WL
+
+LPDDR5 (BG mode && DQ ODT is Enabled) : RL + BL/n_max +
+
+RU(tWCKDQO(max)/tCK) + RD(tRPST/tCK) - ODTLon -
+
+RD(tODTon(min)/tCK) + 1
+
+15:8 RW 0x06
+
+LPDDR5 (16B mode && DQ ODT is Disabled): RL + BL/n + RU(tWCKDQO(max)/tCK) - WL
+
+LPDDR5 (16B mode && DQ ODT is Enabled) : RL + BL/n +
+
+RU(tWCKDQO(max)/tCK) + RD(tRPST/tCK) - ODTLon -
+
+RD(tODTon(min)/tCK) + 1
+
+Minimum time from read command to write command. Include
+
+time for bus turnaround and all per-bank, per-rank, and global
+
+constraints.
+
+Please see the relevant PHY databook for details of what must be
+
+included here.
+
+Where:
+
+WL = write latency
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+765
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+BL = burst length. This must match the value programmed in the
+
+BL bit of the mode register to the SDRAM
+
+RL = read latency = CAS latency
+
+WR_PREAMBLE = 1 (1tCK write preamble), 2 (2tCK write
+
+preamble).
+
+RD_POSTAMBLE = 0.5 (0.5tCK read postamble), 1.5 (1.5tCK read
+
+postamble).
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+For LPDDR4, if derating is enabled
+
+(DDRCTL_DERATECTL0_FREQ3.derate_enable=1), derated
+
+tDQSCKmax must be used.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x6
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+wr2rd
+
+LPDDR4: WL + BL/2 + tWTR + 1
+
+LPDDR5(BG mode): WL + BL/n_max + RU(tWTR_L/tCK)
+
+LPDDR5(16B mode): WL + BL/n + RU(tWTR/tCK)
+
+Minimum time from write command to read command. Includes
+
+time for bus turnaround, recovery times, and all per-bank, per-
+
+rank, and global constraints.
+
+Please see the relevant PHY databook for details of what must be
+
+included here.
+
+Where:
+
+CWL = CAS write latency
+
+WL = Write latency
+
+RW 0x0d
+
+PL = Parity latency BL = burst length. This must match the value programmed in the
+
+BL bit of the mode register to the SDRAM
+
+tWTR_L = internal write to read command delay for same bank
+
+group. This comes directly from the SDRAM specification.
+
+tWTR = internal write to read command delay. This comes
+
+directly from the SDRAM specification.
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+Add one extra cycle for LPDDR4 operation.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xd
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG3_FREQ3
+
+Address: Operational Base + offset (0x30000C)
+
+Bit Attr Reset Value
+
+Description
+
+31:23 RO 0x000
+
+reserved
+
+t_mr
+
+Time from MRW/MRS to valid command
+
+LPDDR4: Set this to the larger of tMRR, tMRW, tMRWCKEL and
+
+tMRD.
+
+22:16 RW 0x04
+
+LPDDR5: Set this to the larger of tMRR, tMRW, tMRWPD and
+
+tMRD.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+766
+
+RK3576 TRM (Part 2)
+
+Bit 15:8 7:0
+
+Attr Reset Value
+
+Description
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+rd2mr
+
+Time from Read to MRW/MRR command.
+
+LPDDR4: RL + BL/2 + RU(tDQSCKmax/tCK) + RD(tRPST) +
+
+max(RU(7.5ns/tCK),8nCK) + nRTP - 8
+
+RW 0x04
+
+LPDDR5: RL + RU(tWCKDQO(max)/tCK)) + BL/n_max + MAX[RU(7.5ns/tCK),4nCK] + nRBTP
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+wr2mr
+
+Time from Write to MRW/MRR command.
+
+LPDDR4: WL + 1 + BL/2 + max(RU(7.5ns/tCK),8nCK) + nWR
+
+RW 0x04
+
+LPDDR5: WL + BL/n_max + MAX[RU(7.5ns/tCK),4nCK] + nWR Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG4_FREQ3
+
+Address: Operational Base + offset (0x300010)
+
+Bit Attr Reset Value
+
+Description
+
+t_rcd
+
+tRCD - tAL: Minimum time from activate to read or write
+
+command to same bank.
+
+31:24 RW 0x05
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+23:22 RO 0x0
+
+reserved
+
+t_ccd
+
+This is the minimum time between two reads or two writes.
+
+LPDDR4: tCCD
+
+21:16 RW 0x04
+
+LPDDR5: BL/n Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15:14 RO 0x0
+
+reserved
+
+t_rrd
+
+For LPDDR5(BG mode): Minimum time between activates from
+
+bank "a" to bank "b" for same bank group.
+
+For LPDDR4/LPDDR5(16B mode): Minimum time between
+
+activates from bank "a" to bank "b".
+
+13:8 RW 0x04
+
+LPDDR4: RU(tRRD/tCK) LPDDR5(BG mode): RU(tRRD_L/tCK)
+
+LPDDR5(16B mode): RU(tRRD/tCK)
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+7
+
+RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+767
+
+RK3576 TRM (Part 2)
+
+Bit 6:0
+
+Attr Reset Value
+
+Description
+
+t_rp
+
+tRP: Minimum time from single-bank precharge to activate of
+
+same bank.
+
+RW 0x05
+
+t_rp must be set to RoundUp(tRP/tCK). Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG5_FREQ3
+
+Address: Operational Base + offset (0x300014)
+
+Bit Attr Reset Value
+
+Description
+
+31:30 RO 0x0
+
+reserved
+
+t_cksrx
+
+This is the time before Self Refresh Exit that CK is maintained as
+
+a valid clock before issuing SRX. Specifies the clock stable time
+
+before SRX.
+
+Recommended settings:
+
+29:24 RW 0x05
+
+LPDDR4: tCKCKEH
+
+LPDDR5: tCKCSH
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+23 RO 0x0
+
+reserved
+
+t_cksre
+
+This is the time after Self Refresh Down Entry/Power Down Entry
+
+that CK is maintained as a valid clock. Specifies the clock disable
+
+delay after SRE/PDE.
+
+Recommended settings:
+
+22:16 RW 0x05
+
+LPDDR4: tCKELCK
+
+LPDDR5: tCSLCK
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15 RO 0x0
+
+reserved
+
+t_ckesr
+
+Minimum CKE low width for Self refresh or Self refresh power
+
+down entry to exit timing in memory clock cycles.
+
+Recommended settings:
+
+14:8 RW 0x04
+
+LPDDR4: Max(tCKE, tSR) LPDDR5: tSR
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+7:6 RO 0x0
+
+reserved
+
+t_cke
+
+Delay time between PDE and PDX.
+
+LPDDR4: tCKE
+
+5:0 RW 0x03
+
+LPDDR5: tCSPD Unit: DRAM clock cycles.
+
+Value After Reset: 0x3
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+768
+
+RK3576 TRM (Part 2)
+
+DDRCTL_DRAMSET1TMG6_FREQ3
+
+Address: Operational Base + offset (0x300018)
+
+Bit Attr Reset Value
+
+Description
+
+31:6 RO 0x0000000 reserved
+
+t_ckcsx
+
+This is the time before Clock Stop Exit that CK is maintained as a
+
+valid clock before issuing Clock Stop Exit. Specifies the clock
+
+stable time before next command after Clock Stop Exit.
+
+Recommended settings:
+
+5:0 RW 0x05
+
+LPDDR4/5: tXP + 2
+
+This is only present for designs supporting LPDDR devices.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG7_FREQ3
+
+Address: Operational Base + offset (0x30001C)
+
+Bit Attr Reset Value
+
+Description
+
+31:4 RO 0x0000000 reserved
+
+t_csh
+
+CS High Pulse width at PDX
+
+LPDDR5: tCSH
+
+3:0 RW 0x0
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG8_FREQ3
+
+Address: Operational Base + offset (0x300020)
+
+Bit Attr Reset Value
+
+Description
+
+31:15 RO 0x00000
+
+reserved
+
+t_xs_dll_x32
+
+14:8 RW 0x44
+
+tXSDLL: Exit Self Refresh to commands requiring a locked DLL.
+
+Note: Not used for LPDDR4/LPDDR5 SDRAMs.
+
+7
+
+RO 0x0
+
+reserved
+
+t_xs_x32
+
+6:0 RW 0x05
+
+tXS: Exit Self Refresh to commands not requiring a locked DLL.
+
+Note: Not used for LPDDR4/5 SDRAMs.
+
+DDRCTL_DRAMSET1TMG9_FREQ3
+
+Address: Operational Base + offset (0x300024)
+
+Bit Attr Reset Value
+
+Description
+
+31:21 RO 0x000
+
+reserved
+
+t_ccd_s
+
+tCCD_S: This is the minimum time between two reads or two
+
+writes for different bank group. For bank switching (from bank
+
+"a" to bank "b"), the minimum time is this value + 1.
+
+20:16 RW 0x04
+
+Note: This register field is only applicable for designs supporting LPDDR5 SDRAM memories.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15:14 RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+769
+
+RK3576 TRM (Part 2)
+
+Bit 13:8
+7:0
+
+Attr Reset Value
+
+Description
+
+t_rrd_s
+
+tRRD_S: Minimum time between activates from bank "a" to bank
+
+"b" for different bank group.
+
+Note: This register field is only applicable for designs supporting
+
+RW 0x04
+
+LPDDR5 SDRAM memories.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+wr2rd_s
+
+Minimum time from write command to read command for
+
+different bank group. Includes time for bus turnaround, recovery
+
+times, and all per-bank, per-rank, and global constraints.
+
+Applicable only in designs configured to support LPDDR5 SDRAM
+
+memories.
+
+LPDDR5 designs:
+
+WL + BL/n_min +RU(tWTR_S/tCK)
+
+RW 0x0d
+
+Where:
+
+WL = Write Latency
+
+BL/n_min = Effective Burst Length
+
+tWTR_S = internal write to read command delay for different
+
+bank group.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xd
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG12_FREQ3
+
+Address: Operational Base + offset (0x300030)
+
+Bit Attr Reset Value
+
+Description
+
+31:20 RO 0x000
+
+reserved
+
+t_cmdcke
+
+tCMDCKE: Delay from valid command to PDE
+
+LPDDR4: Max(tESCKE, tCMDCKE)
+
+19:16 RW 0x2
+
+LPDDR5: Max(tESPD, tCMDPD) Unit: DRAM clock cycles.
+
+Value After Reset: 0x2
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15:0 RO 0x0000
+
+reserved
+
+DDRCTL_DRAMSET1TMG13_FREQ3
+
+Address: Operational Base + offset (0x300034)
+
+Bit Attr Reset Value
+
+Description
+
+31 RO 0x0
+
+reserved
+
+odtloff
+
+LPDDR4: ODTLoff: This is the latency from CAS-2 command to
+
+ODToff reference.
+
+Note: This register field is only applicable for designs supporting
+
+30:24 RW 0x1c
+
+LPDDR4 SDRAM memories.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x1c
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+23 RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+770
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+t_ccd_mw
+
+This is the minimum time from write or masked write to masked
+
+write command for same bank.
+
+LPDDR4: tCCDMW
+
+LPDDR5(BG mode): 4*BL/n_max
+
+22:16 RW 0x20
+
+LPDDR5(16B mode): 4*BL/n Note: This register field is only applicable for designs supporting
+
+LPDDR4/LPDDR5 SDRAM memories.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x20
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15:4 RO 0x000
+
+reserved
+
+t_ppd
+
+LPDDR4/5: tPPD: This is the minimum time from precharge to
+
+precharge command.
+
+3:0 RW 0x4
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG14_FREQ3
+
+Address: Operational Base + offset (0x300038)
+
+Bit Attr Reset Value
+
+Description
+
+31:25 RO 0x00
+
+reserved
+
+t_osco
+
+tosco: Minimum time from DQS Oscillator stop to Mode register
+
+readout.
+
+LPDDR4 : max(40ns,8nck)
+
+24:16 RW 0x008
+
+LPDDR5A: tOSCODQI=tOSCODQO=max(40ns,8nck)
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x8
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15:12 RO 0x0
+
+reserved
+
+t_xsr
+
+tXSR: Exit Self Refresh to any command.
+
+The value 0xfff is illegal for this register field.
+
+11:0 RW 0x0a0
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xa0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG23_FREQ3
+
+Address: Operational Base + offset (0x30005C)
+
+Bit Attr Reset Value
+
+Description
+
+31:24 RO 0x00
+
+reserved
+
+t_xsr_dsm_x1024
+
+Delay from Deep Sleep Mode Exit to SRX.
+
+Unit: Multiples of 1024 DRAM clock cycles.
+
+23:16 RW 0x00
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic - Refresh Related
+
+15:12 RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+771
+
+RK3576 TRM (Part 2)
+
+Bit 11:0
+
+Attr Reset Value
+
+Description
+
+t_pdn
+
+Minimum interval between Deep Sleep Mode Entry and Exit.
+
+RW 0x000
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic - Refresh Related
+
+DDRCTL_DRAMSET1TMG24_FREQ3
+
+Address: Operational Base + offset (0x300060)
+
+Bit Attr Reset Value
+
+Description
+
+31:26 RO 0x00
+
+reserved
+
+bank_org
+
+Select Bank/ Bank group organization:
+
+2'b00: 4 Banks/ 4 Bank groups
+
+2'b01: 8 Banks
+
+25:24 RW 0x0
+
+2'b10: 16 Banks
+
+2'b11: Reserved
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+rd2wr_s
+
+Minimum time from read command to write command for
+
+different bank group.
+
+Includes time for bus turnaround, recovery times and all per-
+
+bank, per-rank and global constraints.
+
+LPDDR5(DQ ODT is disabled): RL + BL/n_min +
+
+23:16 RW 0x0f
+
+RU(tWCKDQO(max)/tCK) - WL LPDDR5(DQ ODT is enabled): RL + BL/n_min +
+
+RU(tWCKDQO(max)/tCK) + RD(tRPST/tCK) - ODTLon -
+
+RD(tODTon(min)/tCK)
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+max_rd_sync
+
+Minimum time from read command to WCK2CK sync OFF.
+
+RL + BL/n_max + RU(tRPST/tCK)
+
+15:8 RW 0x0f
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+max_wr_sync
+
+Minimum time from write command to WCK2CK sync OFF.
+
+WL + BL/n_max
+
+7:0 RW 0x0f
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG25_FREQ3
+
+Address: Operational Base + offset (0x300064)
+
+Bit Attr Reset Value
+
+31:19 RO 0x0000
+
+reserved
+
+Description
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+772
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+lpddr4_diff_bank_rwa2pre
+
+Set the timing constraint between different bank
+
+RD/WR/MWR/ACT and PRE in LPDDR4.
+
+LPDDR4 JESD209-4A requires 4 cycles
+
+18:16 RW 0x0
+
+LPDDR4 JESD209-4B requires 2 cycles Value of 1, 3, 5, 6, and 7 are illegal.
+
+Don't care for LPDDR5.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+wra2pre
+
+Time between write with AP and precharge to same bank.
+
+LPDDR4: WL + BL/2 + nWR + 1
+
+15:8 RW 0x00
+
+LPDDR5: WL + BL/n_min + nWR + 1 Unit: DRAM clock cycles.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+rda2pre
+
+Time between read with AP and precharge to same bank.
+
+LPDDR4: nRTP
+
+7:0 RW 0x00
+
+LPDDR5: BL/n_min + nRBTP Unit: DRAM clock cycles.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_DRAMSET1TMG30_FREQ3
+
+Address: Operational Base + offset (0x300078)
+
+Bit Attr Reset Value
+
+Description
+
+31:24 RO 0x00
+
+reserved
+
+mrr2mrw
+
+MRR to MRW delay
+
+23:16 RW 0x00
+
+Unit: DRAM clock cycles. Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+mrr2wr
+
+MRR to WR delay
+
+15:8 RW 0x00
+
+Unit: DRAM clock cycles. Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+mrr2rd
+
+MRR to RD delay
+
+7:0 RW 0x00
+
+Unit: DRAM clock cycles. Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_INITMR0_FREQ3 Address: Operational Base + offset (0x300500)
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+773
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+mr
+
+LPDDR4: Value to write to MR1 register
+
+31:16 RW 0x0000
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+emr
+
+LPDDR4: Value to write to MR2 register
+
+15:0 RW 0x0510
+
+Value After Reset: 0x510
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+DDRCTL_INITMR1_FREQ3
+
+Address: Operational Base + offset (0x300504)
+
+Bit Attr Reset Value
+
+Description
+
+emr2
+
+LPDDR4: Value to write to MR3 register
+
+31:16 RW 0x0000
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+emr3
+
+LPDDR4: Value to write to MR13 register
+
+15:0 RW 0x0000
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_INITMR2_FREQ3
+
+Address: Operational Base + offset (0x300508)
+
+Bit Attr Reset Value
+
+Description
+
+mr4
+
+LPDDR4: Value to be loaded into SDRAM MR11 registers (not
+
+applicable for initialization, but this is used when HWFFC is
+
+31:16 RW 0x0000
+
+performed).
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+mr5
+
+LPDDR4: Value to be loaded into SDRAM MR12 registers (not
+
+applicable for initialization, but this is used when HWFFC is
+
+15:0 RW 0x0000
+
+performed).
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+DDRCTL_INITMR3_FREQ3
+
+Address: Operational Base + offset (0x30050C)
+
+Bit Attr Reset Value
+
+Description
+
+mr22
+
+LPDDR4 Value to be loaded into SDRAM MR22 registers (not
+
+applicable for initialization, but this is used when HWFFC is
+
+31:16 RW 0x0000
+
+performed).
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+774
+
+RK3576 TRM (Part 2)
+
+Bit 15:0
+
+Attr Reset Value
+
+Description
+
+mr6
+
+LPDDR4 Value to be loaded into SDRAM MR14 registers (not
+
+applicable for initialization, but this is used when HWFFC is
+
+RW 0x0000
+
+performed).
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+DDRCTL_DFITMG0_FREQ3
+
+Address: Operational Base + offset (0x300580)
+
+Bit Attr Reset Value
+
+Description
+
+31:29 RO 0x0
+
+reserved
+
+dfi_t_ctrl_delay
+
+Specifies the number of DFI clock cycles after an assertion or de-
+
+assertion of the DFI control signals that the control signals at the
+
+PHY-DRAM interface reflect the assertion or de-assertion. If the
+
+28:24 RW 0x07
+
+DRAM clock and the memory clock are not phase-aligned, this timing parameter must be rounded up to the next integer value.
+
+Unit: DFI clock cycles.
+
+Value After Reset: 0x7
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+23 RO 0x0
+
+reserved
+
+dfi_t_rddata_en
+
+Time from the assertion of a read command on the DFI interface
+
+to the assertion of the dfi_rddata_en signal.
+
+Refer to PHY specification for correct value.
+
+22:16 RW 0x02
+
+This corresponds to the DFI parameter trddata_en.
+
+Unit: DRAM data clock cycles.
+
+Value After Reset: 0x2
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+15:14 RO 0x0
+
+reserved
+
+dfi_tphy_wrdata
+
+Specifies the number of clock cycles between when
+
+dfi_wrdata_en is asserted to when the associated write data is
+
+driven on the dfi_wrdata signal. This corresponds to the DFI
+
+13:8 RW 0x00
+
+timing parameter tphy_wrdata. Refer to PHY specification for correct value. Note, max supported value is 8.
+
+Unit: DRAM data clock cycles.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+7:6 RO 0x0
+
+reserved
+
+dfi_tphy_wrlat
+
+Write latency
+
+Number of clocks from the write command to write data enable
+
+(dfi_wrdata_en). This corresponds to the DFI timing parameter
+
+tphy_wrlat.
+
+5:0 RW 0x02
+
+Refer to PHY specification for correct value.
+
+For LPDDR4, dfi_tphy_wrlat>60 is not supported.
+
+Unit: DRAM data clock cycles.
+
+Value After Reset: 0x2
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+775
+
+RK3576 TRM (Part 2)
+
+DDRCTL_DFITMG1_FREQ3
+
+Address: Operational Base + offset (0x300584)
+
+Bit Attr Reset Value
+
+Description
+
+31:21 RO 0x000
+
+reserved
+
+dfi_t_wrdata_delay
+
+Specifies the number of DFI clock cycles between when the
+
+dfi_wrdata_en signal is asserted and when the corresponding
+
+write data transfer is completed on the DRAM bus.
+
+This corresponds to the DFI timing parameter twrdata_delay.
+
+For LPDDR5, this should be set to "twck_delay + BL/n_max -
+
+BL/n_min" instead of twrdata_delay. twck_delay specifies the
+
+time from dfi_wck_en deassertion to when WCK transfer
+
+completes on the DRAM bus and is defined by the PHY
+
+20:16 RW 0x00
+
+Refer to PHY specification for correct value. When DDRCTL_TMGCFG_FREQ3.frequency_ratio is set to 0(1:2
+
+Mode), divided the value by 2 and round it up to the next integer
+
+value.
+
+When DDRCTL_TMGCFG_FREQ3.frequency_ratio is set to 1(1:4
+
+Mode), divided the value by 4 and round it up to the next integer
+
+value.
+
+Unit: DFI clock cycles.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+15:13 RO 0x0
+
+reserved
+
+dfi_t_dram_clk_disable
+
+Specifies the number of DFI clock cycles from the assertion of the
+
+dfi_dram_clk_disable signal on the DFI until the clock to the
+
+DRAM memory devices, at the PHY-DRAM boundary, maintains a
+
+low value. If the DRAM clock and the memory clock are not phase
+
+12:8 RW 0x04
+
+aligned, this timing parameter must be rounded up to the next
+
+integer value.
+
+Unit: DFI clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+7:5 RO 0x0
+
+reserved
+
+dfi_t_dram_clk_enable
+
+Specifies the number of DFI clock cycles from the de-assertion of
+
+the dfi_dram_clk_disable signal on the DFI until the first valid
+
+rising edge of the clock to the DRAM memory devices, at the PHY-
+
+DRAM boundary. If the DRAM clock and the memory clock are not
+
+4:0 RW 0x04
+
+phase aligned, this timing parameter must be rounded up to the
+
+next integer value.
+
+Unit: DFI clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+DDRCTL_DFITMG2_FREQ3
+
+Address: Operational Base + offset (0x300588)
+
+Bit Attr Reset Value
+
+31:22 RO 0x000
+
+reserved
+
+Description
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+776
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+dfi_twck_delay
+
+Number of DFI PHY clock cycles from dfi_wck_en is de-asserted
+
+to when the WCK transfer completes on the DRAM bus.
+
+21:16 RW 0x00
+
+Refer to PHY specification for correct value. Unit: DFI PHY clock cycles.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15 RO 0x0
+
+reserved
+
+dfi_tphy_rdcslat
+
+Number of DFI PHY clock cycles between when a read command
+
+is sent on the DFI control interface and when the associated
+
+dfi_rddata_cs signal is asserted. This corresponds to the DFI
+
+14:8 RW 0x02
+
+timing parameter tphy_rdcslat. Refer to PHY specification for correct value.
+
+Unit: DRAM data clock cycles.
+
+Value After Reset: 0x2
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+7:6 RO 0x0
+
+reserved
+
+dfi_tphy_wrcslat
+
+Number of DFI PHY clock cycles between when a write command
+
+is sent on the DFI control interface and when the associated
+
+dfi_wrdata_cs signal is asserted. This corresponds to the DFI
+
+5:0 RW 0x02
+
+timing parameter tphy_wrcslat. Refer to PHY specification for correct value.
+
+Unit: DRAM data clock cycles.
+
+Value After Reset: 0x2
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DFITMG4_FREQ3
+
+Address: Operational Base + offset (0x300590)
+
+Bit Attr Reset Value
+
+Description
+
+dfi_twck_en_rd
+
+WCK Enable Read Timing. Defines the timing from the CAS-
+
+WS_RD command to driving of the dfi_wck_en=ENABLED.
+
+31:24 RW 0x00
+
+Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+dfi_twck_en_wr
+
+WCK Enable Read Timing. Defines the timing from the CAS-
+
+WS_WR command to driving of the dfi_wck_en=ENABLED.
+
+23:16 RW 0x00
+
+Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+dfi_twck_en_fs
+
+WCK Enable Fast Sync Timing. Defines the timing from the CAS-
+
+15:8 RW 0x00
+
+WS_FS command to driving of the dfi_wck_en=ENABLED. Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+777
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+dfi_twck_dis
+
+WCK Off Timing.
+
+Defines the timing from the last command opportunity to the
+
+deassertion of dfi_wck_en and dfi_wck_toggle_en assuming that
+
+RW 0x00
+
+no command is being sent.
+
+Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+DDRCTL_DFITMG5_FREQ3
+
+Address: Operational Base + offset (0x300594)
+
+Bit Attr Reset Value
+
+Description
+
+dfi_twck_fast_toggle
+
+Defines the number of clock cycles between the dfi_wck_signal
+
+being driven to TOGGLE to when the dfi_wck_signal is driven to
+
+FAST_TOGGLE.
+
+This timing is only applicable when the WCK transitions from the
+
+31:24 RW 0x00
+
+slow to fast toggle. Otherwise, this timing parameter must be set
+
+to 0x0.
+
+Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+dfi_twck_toggle
+
+WCK Toggle Enable Timing. Defines the timing from dfi_wck_en
+
+assertion to dfi_wck_toggle_en assertion.
+
+23:16 RW 0x00
+
+Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+dfi_twck_toggle_cs
+
+Defines the number of clock cycles between a read or write
+
+command to when the dfi_wck_cs signal must be stable.
+
+15:8 RW 0x00
+
+Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+dfi_twck_toggle_post
+
+Defines the number of clock cycles after a read or write command
+
+data burst completion during which the WCK must remain in the
+
+7:0 RW 0x00
+
+current toggle state. Unit: WCK cycles
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 4
+
+DDRCTL_DFIUPDTMG1_FREQ3
+
+Address: Operational Base + offset (0x3005AC)
+
+Bit Attr Reset Value
+
+31:24 RO 0x00
+
+reserved
+
+Description
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+778
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+dfi_t_ctrlupd_interval_min_x1024
+
+This is the minimum amount of time between DDRCTL initiated
+
+DFI update requests (which is executed whenever the DDRCTL is
+
+idle). Set this number higher to reduce the frequency of update
+
+requests, which can have a small impact on the latency of the
+
+first read request when the DDRCTL is idle. Minimum allowed
+
+23:16 RW 0x01
+
+value for this field is 1.
+
+Unit: Multiples of 1024 DFI clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x01
+
+Programming Mode: Static
+
+15:8 RO 0x00
+
+reserved
+
+dfi_t_ctrlupd_interval_max_x1024
+
+This is the maximum amount of time between DDRCTL initiated
+
+DFI update requests. This timer resets with each update request;
+
+when the timer expires dfi_ctrlupd_req is sent and traffic is
+
+blocked until the dfi_ctrlupd_ackx is received. PHY can use this
+
+idle time to recalibrate the delay lines to the DLLs. The DFI
+
+controller update is also used to reset PHY FIFO pointers in case
+
+of data capture errors. Updates are required to maintain
+
+7:0 RW 0x01
+
+calibration over PVT, but frequent updates may impact performance. Minimum allowed value for this field is 1.
+
+Note: Value programmed for dfi_t_ctrlupd_interval_max_x1024
+
+must be greater than dfi_t_ctrlupd_interval_min_x1024.
+
+Unit: Multiples of 1024 DFI clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x01
+
+Programming Mode: Static
+
+DDRCTL_RFSHSET1TMG0_FREQ3
+
+Address: Operational Base + offset (0x300600)
+
+Bit Attr Reset Value
+
+Description
+
+t_refi_x1_sel
+
+Specifies whether
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 and
+
+DDRCTL_RFSHSET1TMG0_FREQ3.refresh_to_x1_x32 register
+
+values are x1 or x32.
+
+1'b0: x32 register values are used.
+
+1'b1: Register values are used.
+
+This applies only when per-bank refresh is enabled
+
+(DDRCTL_RFSHMOD0.per_bank_refresh=1). If per-bank refresh
+
+31 RW 0x0
+
+is not enabled, the x32 register values are used and this register
+
+field is ignored.
+
+This register field does not exist for configurations which do not
+
+support LPDDR4/5. For such configurations, the value of this
+
+register field can be assumed to be 0, so that
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 and
+
+DDRCTL_RFSHSET1TMG0_FREQ3.refresh_to_x1_x32 are
+
+interpreted as x32 register fields
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic - Refresh Related
+
+30:28 RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+779
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+refresh_margin
+
+Threshold value in number of DRAM clock cycles before the
+
+critical refresh or page timer expires. A critical refresh is to be
+
+issued before this threshold is reached. It is recommended that
+
+this not be changed from the default value, currently shown as
+
+0x2. It must always be less than internally used t_refi/32.
+
+Note that internally used t_refi is equal to
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 * 32 if
+
+27:24 RW 0x2
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel = 0. If
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel = 1, internally
+
+used t_refi is equal to
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32. Note that,
+
+internally used t_refi may be divided by four if derating or TCR is
+
+enabled.
+
+Unit: Multiples of 32 DRAM clock cycles.
+
+Value After Reset: 0x2
+
+Programming Mode: Dynamic - Refresh Related
+
+23:22 RO 0x0
+
+reserved
+
+refresh_to_x1_x32
+
+If the refresh timer has expired at least once (i.e. >tREFI period
+
+elapses, and there are postponed refreshes), then a speculative
+
+refresh may be performed. A speculative refresh is a refresh
+
+performed at a time when refresh would be useful. When there
+
+are no transactions pending in the CAM for a period of time
+
+determined by this
+
+DDRCTL_RFSHSET1TMG0_FREQ3.refresh_to_x1_x32 and the
+
+refresh timer has expired at least once since the last refresh,
+
+then a speculative refresh is performed. Speculative refreshes
+
+continues successively until there are no refreshes pending or
+
+until new reads or writes are issued to the DDRCTL.
+
+This is also used for non speculative refresh when LPDDR per-
+
+21:16 RW 0x10
+
+bank refresh (REFpb) is enabled. The controller observes the
+
+period of time determined by this for each bank, and a priority of
+
+bank address is determined.
+
+This should be programmed to tREFI based value in controller's
+
+current refresh mode.
+
+The controller calculates this according to current refresh mode.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles or multiples of 32 DRAM clock cycles,
+
+depending on DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel.
+
+Value After Reset: 0x10
+
+Programming Mode: Dynamic - Refresh Related
+
+15:12 RO 0x0
+
+reserved
+
+t_refi_x1_x32
+
+Average time interval between refreshes per rank (See JEDEC
+
+specification for LPDDR4).
+
+Set this register to RoundDown(tREFI/tCK).
+
+11:0 RW 0x062
+
+If DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel = 0, divide the above result by 32 and round down.
+
+For LPDDR controller:
+
+If using all-bank refreshes
+
+(DDRCTL_RFSHMOD0.per_bank_refresh = 0), use tREFIab in the
+
+above calculations.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+780
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+If using per-bank refreshes
+
+(DDRCTL_RFSHMOD0.per_bank_refresh = 1), use tREFIpb in the
+
+above calculations.
+
+Note that:
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 must be greater
+
+than 0x1.
+
+If DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel == 1,
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 must be greater
+
+than DDRCTL_RFSHSET1TMG1_FREQ3.t_rfc_min
+
+If DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel == 0,
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 * 32 must be
+
+greater than DDRCTL_RFSHSET1TMG1_FREQ3.t_rfc_min
+
+DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_x32 must be less
+
+than or equal to 0xFFE.
+
+Unit: DRAM clock cycles or multiples of 32 DRAM clock cycles,
+
+depending on DDRCTL_RFSHSET1TMG0_FREQ3.t_refi_x1_sel.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x62
+
+Programming Mode: Dynamic - Refresh Related
+
+DDRCTL_RFSHSET1TMG1_FREQ3
+
+Address: Operational Base + offset (0x300604)
+
+Bit Attr Reset Value
+
+Description
+
+31:12 RO 0x00000
+
+reserved
+
+t_rfc_min
+
+tRFC (min): Minimum time from refresh to refresh or activate.
+
+t_rfc_min must be set to RoundUp(tRFCmin/tCK).
+
+In LPDDR controller, if using all-bank refreshes, the tRFCmin
+
+11:0 RW 0x08c
+
+value in the above equations is equal to tRFCab. If using perbank refreshes, the tRFCmin value in the above equations is
+
+equal to tRFCpb.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x8c
+
+Programming Mode: Dynamic - Refresh Related
+
+DDRCTL_RFSHSET1TMG2_FREQ3
+
+Address: Operational Base + offset (0x300608)
+
+Bit Attr Reset Value
+
+Description
+
+t_pbr2act
+
+Time from REFpb to activate command to different bank than
+
+31:24 RW 0x8c
+
+REFpb. LPDDR5: tpbr2act
+
+Value After Reset: 0x8c
+
+Programming Mode: Dynamic - Refresh Related
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+781
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+t_pbr2pbr
+
+LPDDR4: tpbR2pbR
+
+Per-bank Refresh to Per-bank refresh different bank Time.
+
+Program this to RoundUp(tpbR2pbR/tCK).
+
+The tpbR2pbR value in the above equations is different depending
+
+23:16 RW 0x8c
+
+on the device density. The user must program the appropriate
+
+value from the spec.
+
+Register is valid only in LPDDR4 per-bank refresh mode
+
+(DDRCTL_RFSHMOD0.per_bank_refresh == 1).
+
+Value After Reset: 0x8c
+
+Programming Mode: Dynamic - Refresh Related
+
+15:0 RO 0x0000
+
+reserved
+
+DDRCTL_RFSHSET1TMG4_FREQ3
+
+Address: Operational Base + offset (0x300610)
+
+Bit Attr Reset Value
+
+Description
+
+31:28 RO 0x0
+
+reserved
+
+refresh_timer1_start_value_x32
+
+Refresh timer start for rank 1 (only present in multi-rank
+
+configurations). This is useful in staggering the refreshes to
+
+multiple ranks to help traffic to proceed. This is explained in
+
+Refresh Controls section of architecture chapter.
+
+27:16 RW 0x000
+
+FOR PERFORMANCE ONLY. Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic - Refresh Related
+
+15:12 RO 0x0
+
+reserved
+
+refresh_timer0_start_value_x32
+
+Refresh timer start for rank 0 (only present in multi-rank
+
+configurations). This is useful in staggering the refreshes to
+
+multiple ranks to help traffic to proceed. This is explained in
+
+Refresh Controls section of architecture chapter.
+
+11:0 RW 0x000
+
+FOR PERFORMANCE ONLY. Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic - Refresh Related
+
+DDRCTL_ZQSET1TMG0_FREQ3
+
+Address: Operational Base + offset (0x300800)
+
+Bit Attr Reset Value
+
+Description
+
+31:26 RO 0x00
+
+reserved
+
+t_zq_short_nop
+
+tZQLAT for LPDDR4/LPDDR5: Number of DRAM clock cycles of
+
+NOP required after a ZQCS (ZQ calibration short)/MPC(ZQ Latch)
+
+25:16 RW 0x040
+
+command is issued to SDRAM.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x40
+
+Programming Mode: Static
+
+15:14 RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+782
+
+RK3576 TRM (Part 2)
+
+Bit 13:0
+
+Attr Reset Value
+
+Description
+
+t_zq_long_nop
+
+tZQCAL for LPDDR4/LPDDR5: Number of DRAM clock cycles of
+
+NOP required after a ZQCL (ZQ calibration long)/MPC(ZQ Start)
+
+RW 0x0200
+
+command is issued to SDRAM. If using LPDDR5, this register needs to be programmed to tZQCAL + 10 cycles.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x200
+
+Programming Mode: Static
+
+DDRCTL_ZQSET1TMG1_FREQ3
+
+Address: Operational Base + offset (0x300804)
+
+Bit Attr Reset Value
+
+Description
+
+31:30 RO 0x0
+
+reserved
+
+t_zq_reset_nop
+
+tZQReset: Number of DRAM clock cycles of NOP required after a
+
+29:20 RW 0x020
+
+ZQReset (ZQ calibration Reset) command is issued to SDRAM. Unit: DRAM clock cycles.
+
+Value After Reset: 0x20
+
+Programming Mode: Static
+
+t_zq_short_interval_x1024
+
+Average interval to wait between automatically issuing ZQCS (ZQ
+
+calibration short)/MPC(ZQ calibration) commands to LPDDR4
+
+devices.
+
+Meaningless, if DDRCTL_ZQCTL0.dis_auto_zq=1.
+
+19:0 RW 0x00100
+
+Unit: Multiples of 1024 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x100
+
+Programming Mode: Static
+
+DDRCTL_DQSOSCCTL0_FREQ3
+
+Address: Operational Base + offset (0x300A80)
+
+Bit Attr Reset Value
+
+Description
+
+31:16 RO 0x0000
+
+reserved
+
+dqsosc_interval
+
+DQS Oscillator interval, specifies the time between two DQS
+
+oscillator sequences. Minimum programmable value is 1. The
+
+15:4 RW 0x007
+
+value can be changed while DQSOSCCTL0.dqsosc_enable=0
+
+Unit: DFI clock cycles
+
+Value After Reset: 0x7
+
+Programming Mode: Dynamic
+
+3
+
+RO 0x0
+
+reserved
+
+dqsosc_interval_unit
+
+DQS/WCK Oscillator Interval unit. Specifies the unit for counting
+
+DQS oscillator interval. The value can be changed while
+
+2
+
+RW 0x0
+
+DQSOSCCTL0.dqsosc_enable=0 1'b1: x2K DFI clock cycles
+
+1'b0: x32K DFI clock cycles
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic
+
+1
+
+RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+783
+
+RK3576 TRM (Part 2)
+
+Bit 0
+
+Attr Reset Value
+
+Description
+
+dqsosc_enable
+
+DQS/WCK Oscillator Enable
+
+RW 0x0
+
+1'b1: Enable DQS Oscillator 1'b0: Disable DQS Oscillator
+
+Value After Reset: 0x0
+
+Programming Mode: Dynamic
+
+DDRCTL_DERATEINT_FREQ3
+
+Address: Operational Base + offset (0x300B00)
+
+Bit Attr Reset Value
+
+Description
+
+mr4_read_interval
+
+Interval between two MR4 reads, used to derate the timing
+
+parameters.
+
+31:0
+
+RW
+
+0x00800000
+
+This register must not be set to zero. Unit: DRAM clock cycles.
+
+Value After Reset: 0x800000
+
+Volatile: True
+
+Programming Mode: Static
+
+DDRCTL_DERATEVAL0_FREQ3
+
+Address: Operational Base + offset (0x300B04)
+
+Bit Attr Reset Value
+
+Description
+
+derated_t_rcd
+
+Derated value for tRCD.
+
+For LPDDR4, the required period with derating is tRCD + 1.875ns
+
+For LPDDR5, the required period with derating is tRCD + TBD ns
+
+31:24 RW 0x05
+
+This timing parameter must be rounded up to the next integer value.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+derated_t_ras_min
+
+Derated value for tRAS.
+
+For LPDDR4, the required period with derating is tRAS + 1.875ns
+
+For LPDDR5, the required period with derating is tRAS + TBD ns
+
+23:16 RW 0x0f
+
+This timing parameter must be rounded up to the next integer value.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+15 RO 0x0
+
+reserved
+
+derated_t_rp
+
+Derated value for tRP.
+
+For LPDDR4, the required period with derating is tRP + 1.875ns
+
+For LPDDR5, the required period with derating is tRP + TBD ns
+
+14:8 RW 0x05
+
+This timing parameter must be rounded up to the next integer value.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x5
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+7:6 RO 0x0
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+784
+
+RK3576 TRM (Part 2)
+
+Bit 5:0
+
+Attr Reset Value
+
+Description
+
+derated_t_rrd
+
+Derated value for tRRD.
+
+For LPDDR4, the required period with derating is tRRD + 1.875ns
+
+For LPDDR5, the required period with derating is tRRD + TBD ns
+
+RW 0x04
+
+This timing parameter must be rounded up to the next integer value.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x4
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_DERATEVAL1_FREQ3
+
+Address: Operational Base + offset (0x300B08)
+
+Bit Attr Reset Value
+
+Description
+
+31:8 RO 0x000000 reserved
+
+derated_t_rc
+
+Derated value for tRC.
+
+For LPDDR4, the required period with derating is tRC + 3.75ns
+
+For LPDDR5, the required period with derating is tRC + TBD ns
+
+7:0 RW 0x14
+
+This timing parameter must be rounded up to the next integer value.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x14
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2, Group 4
+
+DDRCTL_HWLPTMG0_FREQ3
+
+Address: Operational Base + offset (0x300B80)
+
+Bit Attr Reset Value
+
+Description
+
+31:28 RO 0x0
+
+reserved
+
+hw_lp_idle_x32
+
+Hardware idle period. The cactive_ddrc output is driven low if the
+
+DDRC command channel is idle for hw_lp_idle * 32 cycles if not
+
+in INIT or DPD/MPSM operating_mode. The DDRC command
+
+channel is considered idle when there are no HIF commands
+
+outstanding. The hardware idle function is disabled when
+
+hw_lp_idle_x32=0. hw_lp_idle_x32=1 is an illegal value when
+
+the controller is in 1:2 mode. hw_lp_idle_x32=1/2/3 are illegal
+
+27:16 RW 0x000
+
+values when the controller is in 1:4 mode.
+
+FOR PERFORMANCE ONLY.
+
+Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x0
+
+Volatile: True
+
+Programming Mode: Static
+
+15:0 RO 0x0000
+
+reserved
+
+DDRCTL_SCHEDTMG0_FREQ3
+
+Address: Operational Base + offset (0x300C00)
+
+Bit Attr Reset Value
+
+31:15 RO 0x00000
+
+reserved
+
+Description
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+785
+
+RK3576 TRM (Part 2)
+
+Bit 14:8
+7:0
+
+Attr Reset Value
+
+Description
+
+rdwr_idle_gap
+
+When the preferred transaction store is empty for these many
+
+clock cycles, switch to the alternate transaction store if it is non-
+
+empty.
+
+The read transaction store (both high and low priority) is the
+
+default preferred transaction store and the write transaction store
+
+is the alternative store.
+
+RW 0x00
+
+When prefer write over read is set this is reversed.
+
+0x0 is a legal value for this register. When set to 0x0, the
+
+transaction store switching will happen immediately when the
+
+switching conditions become true.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x0
+
+Programming Mode: Static
+
+pageclose_timer
+
+This field works in conjunction with DDRCTL_SCHED0.pageclose.
+
+It only has meaning if DDRCTL_SCHED0.pageclose==1.
+
+If DDRCTL_SCHED0.pageclose==1 and pageclose_timer==0,
+
+then an auto-precharge may be scheduled for last read or write
+
+command in the CAM with a bank and page hit.
+
+Note, sometimes an explicit precharge is scheduled instead of the
+
+auto-precharge. See DDRCTL_SCHED0.pageclose for details of
+
+when this may happen.
+
+If DDRCTL_SCHED0.pageclose==1 and pageclose_timer>0, then
+
+RW 0x00
+
+an auto-precharge is not scheduled for last read or write command in the CAM with a bank and page hit.
+
+Instead, a timer is started, with pageclose_timer as the initial
+
+value.
+
+There is a timer on a per bank basis. The timer decrements
+
+unless the next read or write in the CAM to a bank is a page hit.
+
+It gets reset to pageclose_timer value if the next read or write in
+
+the CAM to a bank is a page hit. Once the timer has reached
+
+zero, an explcit precharge will be attempted to be scheduled.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x0
+
+Programming Mode: Static
+
+DDRCTL_PERFHPR1_FREQ3
+
+Address: Operational Base + offset (0x300C80)
+
+Bit Attr Reset Value
+
+Description
+
+hpr_xact_run_length
+
+Number of transactions that are serviced once the HPR queue
+
+goes critical is the smaller of:
+
+(a) This number
+
+31:24 RW 0x0f
+
+(b) Number of transactions available Unit: Transaction
+
+FOR PERFORMANCE ONLY.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+23:16 RO 0x00
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+786
+
+RK3576 TRM (Part 2)
+
+Bit 15:0
+
+Attr Reset Value
+
+Description
+
+hpr_max_starve
+
+Number of DRAM clocks that the HPR queue can be starved
+
+before it goes critical. The minimum valid functional value for this
+
+register is 0x1. Programming it to 0x0 will disable the starvation
+
+functionality; during normal operation, this function must not be
+
+RW 0x0001
+
+disabled as it will cause excessive latencies.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x1
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+DDRCTL_PERFLPR1_FREQ3
+
+Address: Operational Base + offset (0x300C84)
+
+Bit Attr Reset Value
+
+Description
+
+lpr_xact_run_length
+
+Number of transactions that are serviced once the LPR queue
+
+goes critical is the smaller of:
+
+(a) This number
+
+31:24 RW 0x0f
+
+(b) Number of transactions available Unit: Transaction
+
+FOR PERFORMANCE ONLY.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+23:16 RO 0x00
+
+reserved
+
+lpr_max_starve
+
+Number of DRAM clocks that the LPR queue can be starved before
+
+it goes critical. The minimum valid functional value for this
+
+register is 0x1. Programming it to 0x0 will disable the starvation
+
+functionality; during normal operation, this function must not be
+
+15:0 RW 0x007f
+
+disabled as it will cause excessive latencies.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x7f
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+DDRCTL_PERFWR1_FREQ3
+
+Address: Operational Base + offset (0x300C88)
+
+Bit Attr Reset Value
+
+Description
+
+w_xact_run_length
+
+Number of transactions that are serviced once the WR queue
+
+goes critical is the smaller of:
+
+(a) This number
+
+31:24 RW 0x0f
+
+(b) Number of transactions available Unit: Transaction
+
+FOR PERFORMANCE ONLY.
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+23:16 RO 0x00
+
+reserved
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+787
+
+RK3576 TRM (Part 2)
+
+Bit 15:0
+
+Attr Reset Value
+
+Description
+
+w_max_starve
+
+Number of DRAM clocks that the WR queue can be starved before
+
+it goes critical. The minimum valid functional value for this
+
+register is 0x1. Programming it to 0x0 will disable the starvation
+
+functionality; during normal operation, this function must not be
+
+RW 0x007f
+
+disabled as it will cause excessive latencies.
+
+FOR PERFORMANCE ONLY.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x7f
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 3
+
+DDRCTL_TMGCFG_FREQ3
+
+Address: Operational Base + offset (0x300D00)
+
+Bit Attr Reset Value
+
+Description
+
+31:10 RO 0x000000 reserved
+
+dfi_freq_fsp
+
+9:8 RW 0x0
+
+This register value propergates to dfi_freq_fsp pin directly. Value After Reset: 0x0
+
+Programming Mode: Dynamic
+
+7:1 RO 0x00
+
+reserved
+
+frequency_ratio
+
+Selects the Frequency Ratio
+
+For LPDDR4:
+
+1'b0: 1:2 Mode
+
+0
+
+RW 0x0
+
+1'b1: 1:4 Mode For LPDDR5:
+
+1'b0: 1:1:2 Mode
+
+1'b1: 1:1:4 Mode
+
+Value After Reset: 0x0
+
+Programming Mode: Quasi-dynamic Group 2
+
+DDRCTL_RANKTMG0_FREQ3
+
+Address: Operational Base + offset (0x300D04)
+
+Bit Attr Reset Value
+
+Description
+
+31:16 RO 0x0000
+
+reserved
+
+diff_rank_wr_gap
+
+Only present for multi-rank configurations.
+
+Indicates the number of clocks of gap in data responses when
+
+performing consecutive writes to different ranks.
+
+This is used to switch the delays in the PHY to match the rank
+
+requirements.
+
+This value must consider both PHY requirement and ODT
+
+requirement.
+
+PHY requirement:
+
+15:8 RW 0x06
+
+tphy_wrcsgap (see PHY databook for value of tphy_wrcsgap) If CRC feature is enabled, must be increased by 1.
+
+Write preamble is always set to 2tCK for LPDDR4, refer to PHY
+
+databook to see if this is already factored into tphy_wrcsgap
+
+value or if it needs to be increased by 1.
+
+If write postamble is set to 1.5tCK(LPDDR4 only), must be
+
+increased by 1.
+
+ODT requirement:
+
+The value programmed in this register takes care of the ODT
+
+switch off timing requirement when switching ranks during writes.
+
+For LPDDR4, with DQ ODT enabled, diff_rank_wr_gap must be a
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+788
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+minimum of ODTLoff - ODTLon - BL/2 + 1
+
+For other cases, diff_rank_wr_gap must be a minimum of
+
+ODTCFG.wr_odt_hold - BL/2.
+
+Program this to the larger of PHY requirement or ODT
+
+requirement.
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+board delay".
+
+Please see PHY databook for the value of tphy_wckcsgap.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x6
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2
+
+diff_rank_rd_gap
+
+Only present for multi-rank configurations.
+
+Indicates the number of clocks of gap in data responses when
+
+performing consecutive reads to different ranks.
+
+This is used to switch the delays in the PHY to match the rank
+
+requirements.
+
+This value must consider both PHY requirement and ODT
+
+requirement.
+
+PHY requirement:
+
+tphy_rdcsgap (see PHY databook for value of tphy_rdcsgap)
+
+ODT requirement:
+
+RW 0x06
+
+The value programmed in this register takes care of the ODT switch off timing requirement when switching ranks during reads:
+
+Program this to the larger of PHY requirement or ODT
+
+requirement.
+
+After PHY has completed training the value programmed may
+
+need to be increased. Refer to relevant PHY documentation.
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+board delay".
+
+Please see PHY databook for the value of tphy_wckcsgap.
+
+Unit: DRAM clock cycles.
+
+Value After Reset: 0x6
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 2
+
+DDRCTL_RANKTMG1_FREQ3
+
+Address: Operational Base + offset (0x300D08)
+
+Bit Attr Reset Value
+
+Description
+
+31:16 RO 0x0000
+
+reserved
+
+rd2wr_dr
+
+Minimum time from read command to write command for
+
+different rank. Includes time for bus turnaround, recovery times,
+
+and all per-bank, per-rank, and global constraints.
+
+The value must be larger than or equal to the value of
+
+DRAMSET1TMG2.rd2wr.
+
+15:8 RW 0x0f
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+board delay".
+
+Please see PHY databook for the value of tphy_wckcsgap.
+
+Unit: DRAM clock cycles
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+789
+
+RK3576 TRM (Part 2)
+
+Bit 7:0
+
+Attr Reset Value
+
+Description
+
+wr2rd_dr
+
+Minimum time from write command to read command for
+
+different rank. Includes time for bus turnaround, recovery times,
+
+and all per-bank, per-rank, and global constraints.
+
+For LPDDR5, Please set to "JEDEC formula + tphy_wckcsgap +
+
+RW 0x0f
+
+board delay".
+
+Please see PHY databook for the value of tphy_wckcsgap.
+
+Unit: DRAM clock cycles
+
+Value After Reset: 0xf
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 1, Group 2, Group 4
+
+DDRCTL_PWRTMG_FREQ3
+
+Address: Operational Base + offset (0x300D0C)
+
+Bit Attr Reset Value
+
+Description
+
+31:26 RO 0x00
+
+reserved
+
+selfref_to_x32
+
+After this many clocks of the DDRC command channel being idle
+
+the DDRCTL automatically puts the SDRAM into Self Refresh.
+
+The DDRC command channel is considered idle when there are no
+
+HIF commands outstanding. This must be enabled in the
+
+PWRCTL.selfref_en.
+
+25:16 RW 0x040
+
+FOR PERFORMANCE ONLY. Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x40
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+15:7 RO 0x000
+
+reserved
+
+powerdown_to_x32
+
+After this many clocks of the DDRC command channel being idle
+
+the DDRCTL automatically puts the SDRAM into power-down. The
+
+DDRC command channel is considered idle when there are no HIF
+
+commands outstanding. This must be enabled in the
+
+PWRCTL.powerdown_en.
+
+6:0 RW 0x10
+
+FOR PERFORMANCE ONLY. Unit: Multiples of 32 DRAM clock cycles.
+
+Please refer to "Note 1" from "Notes on Timing Registers" at the
+
+start of "Register Descriptions" chapter for details on how to
+
+program this register field.
+
+Value After Reset: 0x10
+
+Volatile: True
+
+Programming Mode: Quasi-dynamic Group 4
+
+7.4.4 Internal Address Mapping For DDRPHY
+
+Slave address can be divided into different length for different usage, which is shown as
+
+follows.
+
+Operational Base
+
+Name
+
+Base Address
+
+DDRPHY0
+
+0x2A020000
+
+DDRPHY1
+
+0x2A030000
+
+7.4.5 Registers Summary For DDRPHY
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+790
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_GNR_CON0 DDRPHY_CAL_CON0 DDRPHY_CAL_CON1 DDRPHY_CAL_CON2 DDRPHY_CAL_CON3 DDRPHY_CAL_CON4 DDRPHY_LP_CON0 DDRPHY_GATE_CON0
+
+0x0000 0x0004 0x0008 0x000C 0x0010 0x0014 0x0018 0x001C
+
+DDRPHY_OFFSETR_CON0 0x0020
+
+DDRPHY_OFFSETW_CON0 0x0030
+
+DDRPHY_OFFSET_DQ_CO N0
+
+0x003C
+
+DDRPHY_OFFSETC_CON0 0x0040
+
+DDRPHY_SHIFTC_CON0 0x004C DDRPHY_OFFSETD_CON0 0x0050
+
+DDRPHY_OFFSETO_CON0 0x0058
+
+DDRPHY_WR_LVL_CON0 0x006C
+
+DDRPHY_WR_LVL_CON1 0x0070
+
+DDRPHY_WR_LVL_CON2 0x0074
+
+DDRPHY_WR_LVL_CON3 0x0078
+
+DDRPHY_CA_DESKEW_CO N0
+
+0x007C
+
+DDRPHY_CA_DESKEW_CO N1
+
+0x0080
+
+DDRPHY_CA_DESKEW_CO N2
+
+0x0084
+
+DDRPHY_CA_DESKEW_CO N3
+
+0x0088
+
+DDRPHY_CA_DESKEW_CO N4
+
+0x008C
+
+DDRPHY_CA_DESKEW_CO N5
+
+0x0090
+
+DDRPHY_CA_DESKEW_CO N6
+
+0x0094
+
+DDRPHY_CAL_WR_PATTE RN_CON0
+
+0x0098
+
+DDRPHY_CAL_WR_PATTE RN_CON1
+
+0x009C
+
+DDRPHY_CAL_WR_PATTE RN_CON2
+
+0x00A0
+
+DDRPHY_CAL_WR_PATTE RN_CON3
+
+0x00A4
+
+DDRPHY_CAL_WR_PATTE RN_CON4
+
+0x00A8
+
+DDRPHY_CAL_RD_PATTER N_CON0
+
+0x00AC
+
+DDRPHY_MDLL_CON0
+
+0x00B0
+
+DDRPHY_MDLL_CON1
+
+0x00B4
+
+DDRPHY_DVFS_CON
+
+0x00B8
+
+Size
+
+Reset Value
+
+Description
+
+W 0x44005011 General Control Register 0
+
+W 0x789606C0 Calibration Control Register 0
+
+W 0x20142001 Calibration Control Register 1
+
+W 0x42001300 Calibration Control Register 2
+
+W 0xFC7F9000 Calibration Control Register 3
+
+W 0x0083806F Calibration Control Register 4
+
+W 0x000C4403 Low Power Control Register 0
+
+W 0x03003003 Gate Control Register 0
+
+W
+
+0x00000000
+
+Read DQS Code Offset Control Register 0
+
+W
+
+0x00000000
+
+Write DQ Code Offset Control Register 0
+
+W
+
+0x00000000
+
+Read DQ Code Offset Control Register 0
+
+W
+
+0x00000000
+
+Gate Code Offset Control Register 0
+
+W 0x00000000 Gate Code Shift Control Register 0
+
+W 0x00000000 CMD Code Offset Control Register
+
+W
+
+0x00000000
+
+DQ/DM OEN Code Offset Control Register 0
+
+W 0x00000000 Write Levelling Control Register 0
+
+W 0x01E80473 Write Levelling Control Register 1
+
+W 0x40465580 Write Levelling Control Register 2
+
+W 0x00000B00 Write Levelling Control Register 3
+
+W 0x00000000 CA De-skew Control Register 0
+
+W 0x00000000 CA De-skew Control Register 1
+
+W 0x00000000 CA De-skew Control Register 2
+
+W 0x00000000 CA De-skew Control Register 3
+
+W 0x00000000 CA De-skew Control Register 4
+
+W 0x00000000 CA De-skew Control Register 5
+
+W 0x00000000 CA De-skew Control Register 6
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 0
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 1
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 2
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 3
+
+W
+
+0x00005555
+
+Write Calibration Pattern Register 4
+
+W
+
+0x55555A3C
+
+Read Calibration Pattern Register 0
+
+W 0x2000017E MDLL Control Register 0
+
+W 0x00200100 MDLL Control Register 1
+
+W 0x00002640 DVFS Control Register
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+791
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_DVFS0_CON0 0x00BC
+
+DDRPHY_DVFS1_CON0 0x00C0
+
+DDRPHY_DVFS0_CON1 0x00C4
+
+DDRPHY_DVFS1_CON1 0x00C8
+
+DDRPHY_DVFS0_CON2 0x00CC
+
+DDRPHY_DVFS1_CON2 0x00D0
+
+DDRPHY_DVFS0_CON3 0x00D4
+
+DDRPHY_DVFS1_CON3 0x00D8
+
+DDRPHY_DVFS0_CON4 0x00DC
+
+DDRPHY_DVFS1_CON4 0x00E0
+
+DDRPHY_CAL_WRLVL_ST AT
+
+0x00E4
+
+DDRPHY_CAL_FAIL_STAT0 0x00E8
+
+DDRPHY_CAL_FAIL_STAT1 0x00EC
+
+DDRPHY_CAL_GT_CS0_V WMC0
+
+0x00F0
+
+DDRPHY_CAL_GT_CS0_C YC
+
+0x00FC
+
+DDRPHY_CAL_RD_VWMC0 0x0100
+
+DDRPHY_CAL_RD_VWML0 0x0110
+
+DDRPHY_CAL_RD_VWMR0 0x0120
+
+DDRPHY_CAL_WR_VWMC 0
+
+0x0130
+
+DDRPHY_CAL_WR_VWML 0
+
+0x0140
+
+DDRPHY_CAL_WR_VWMR 0
+
+0x0150
+
+DDRPHY_CAL_CON5
+
+0x0160
+
+DDRPHY_DVFS_UPD_CON 0
+
+0x0164
+
+DDRPHY_DVFS_UPD_CON 1
+
+0x0168
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON_DM
+
+0x018C
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON0
+
+0x0190
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON1
+
+0x019C
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON2
+
+0x01A8
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON3
+
+0x01B4
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON4
+
+0x01C0
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON5
+
+0x01CC
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON6
+
+0x01D8
+
+DDRPHY_RD_DESKEW_CE NTER_CS0_CON7
+
+0x01E4
+
+DDRPHY_WR_DESKEWC_ CS0_CON0
+
+0x01F0
+
+Size
+
+Reset Value
+
+Description
+
+W 0x64080C06 DVFS0 Control Register 0
+
+W 0x64080C06 DVFS1 Control Register 0
+
+W 0x30800000 DVFS0 Control Register 1
+
+W 0x30800000 DVFS1 Control Register 1
+
+W 0x60062001 DVFS0 Control Register 2
+
+W 0x60062001 DVFS1 Control Register 2
+
+W 0x0003FFFF DVFS0 Control Register 3
+
+W 0x0003FFFF DVFS1 Control Register 3
+
+W 0x00243F3F DVFS0 Control Register 4
+
+W 0x00243F3F DVFS1 Control Register 4
+
+W 0x00000000 Write Levelling Status Register
+
+W 0x00000000 Calibration Fail Status Register 0
+
+W 0x00000000 Calibration Fail Status Register 1
+
+W
+
+0x00000000
+
+Gate Training Center Code CS0 Register 0
+
+W 0x00000000 Gate Training CS0 Cycle Register
+
+W 0x00000000 Read Calibration Center Code 0 W 0x00000000 Read Calibration Left Code 0 W 0x00000000 Read Calibration Right Code 0
+
+W 0x00000000 Write Calibration Center Code 0
+
+W 0x00000000 Write Calibration Left Code 0
+
+W 0x00000000 Write Calibration Right Code 0 W 0x00000000 Calibration Control Register 5 W 0x003F3F3F DVFS Update Control Register 0
+
+W 0x003F3F3F DVFS Update Control Register 1
+
+W
+
+0x00000000
+
+Read DM De-skew CS0 Center Code Control Register
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 1
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 2
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 3
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 4
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 5
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 6
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Center Code Control Register 7
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 0
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+792
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_WR_DESKEWC_ CS0_CON1
+
+0x01FC
+
+DDRPHY_WR_DESKEWC_ CS0_CON2
+
+0x0208
+
+DDRPHY_WR_DESKEWC_ CS0_CON3
+
+0x0214
+
+DDRPHY_WR_DESKEWC_ CS0_CON4
+
+0x0220
+
+DDRPHY_WR_DESKEWC_ CS0_CON5
+
+0x022C
+
+DDRPHY_WR_DESKEWC_ CS0_CON6
+
+0x0238
+
+DDRPHY_WR_DESKEWC_ CS0_CON7
+
+0x0244
+
+DDRPHY_DM_DESKEWC_ CS0_CON0
+
+0x0250
+
+DDRPHY_VWMC_STAT0 0x025C
+
+DDRPHY_VWMC_STAT3 0x0268
+
+DDRPHY_VWMC_STAT6 0x0274
+
+DDRPHY_VWMC_STAT9 0x0280
+
+DDRPHY_VWMC_STAT12 0x028C
+
+DDRPHY_VWMC_STAT15 0x0298
+
+DDRPHY_VWMC_STAT18 0x02A4
+
+DDRPHY_VWMC_STAT21 0x02B0
+
+DDRPHY_DM_VWMC_STA T0
+
+0x02BC
+
+DDRPHY_VWML_STAT0 0x02C8
+
+DDRPHY_VWML_STAT3 0x02D4
+
+DDRPHY_VWML_STAT6 0x02E0
+
+DDRPHY_VWML_STAT9 0x02EC
+
+DDRPHY_VWML_STAT12 0x02F8
+
+DDRPHY_VWML_STAT15 0x0304
+
+DDRPHY_VWML_STAT18 0x0310
+
+DDRPHY_VWML_STAT21 0x031C
+
+DDRPHY_DM_VWML_STAT 0
+
+0x0328
+
+DDRPHY_VWMR_STAT0 0x0334
+
+DDRPHY_VWMR_STAT3 0x0340
+
+DDRPHY_VWMR_STAT6 0x034C
+
+DDRPHY_VWMR_STAT9 0x0358
+
+DDRPHY_VWMR_STAT12 0x0364
+
+DDRPHY_VWMR_STAT15 0x0370
+
+DDRPHY_VWMR_STAT18 0x037C
+
+DDRPHY_VWMR_STAT21 0x0388
+
+DDRPHY_DM_VWMR_STA T0
+
+0x0394
+
+DDRPHY_DQ_IO_RDATA0 0x03A0
+
+DDRPHY_VERSION_INFO_ STAT0
+
+0x03AC
+
+DDRPHY_ZQ_CON0
+
+0x03C8
+
+DDRPHY_ZQ_CON1
+
+0x03CC
+
+DDRPHY_ZQ_CON2
+
+0x03D0
+
+DDRPHY_ZQ_CON3
+
+0x03D4
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 1
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 2
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 3
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 4
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 5
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 6
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Center Code Control Register 7
+
+W
+
+0x00000000
+
+Write DM De-skew CS0 Center Code Control Register 0
+
+W 0x00000000 VWMC Status 0
+
+W 0x00000000 VWMC Status 3
+
+W 0x00000000 VWMC Status 6
+
+W 0x00000000 VWMC Status 9
+
+W 0x00000000 VWMC Status 12
+
+W 0x00000000 VWMC Status 15
+
+W 0x00000000 VWMC Status 18
+
+W 0x00000000 VWMC Status 21
+
+W 0x00000000 DM VWMC Status 0
+
+W 0x00000000 VWML Status 0 W 0x00000000 VWML Status 3 W 0x00000000 VWML Status 6 W 0x00000000 VWML Status 9 W 0x00000000 VWML Status 12 W 0x00000000 VWML Status 15 W 0x00000000 VWML Status 18 W 0x00000000 VWML Status 21
+
+W 0x00000000 DM VWML Status 0
+
+W 0x00000000 VWMR Status 0 W 0x00000000 VWMR Status 3 W 0x00000000 VWMR Status 6 W 0x00000000 VWMR Status 9 W 0x00000000 VWMR Status 12 W 0x00000000 VWMR Status 15 W 0x00000000 VWMR Status 18 W 0x00000000 VWMR Status 21
+
+W 0x00000000 DM VWMR Status 0
+
+W 0x00000000 DQ I/O Read Data Status 0
+
+W 0x09080005 Version Information
+
+W 0xFF807404 ZQ Control Register 0 W 0x00140000 ZQ Control Register 1 W 0x001E0002 ZQ Control Register 2 W 0x003F3F3F ZQ Control Register 3
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+793
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_ZQ_CON5
+
+0x03DC
+
+DDRPHY_ZQ_CON6
+
+0x03E0
+
+DDRPHY_ZQ_CON9
+
+0x03EC
+
+DDRPHY_ZQ_CON12
+
+0x03F8
+
+DDRPHY_TESTIRCV_CON 0
+
+0x0400
+
+DDRPHY_WR_DESKEWC_ CS1_CON0
+
+0x0410
+
+DDRPHY_WR_DESKEWC_ CS1_CON1
+
+0x041C
+
+DDRPHY_WR_DESKEWC_ CS1_CON2
+
+0x0428
+
+DDRPHY_WR_DESKEWC_ CS1_CON3
+
+0x0434
+
+DDRPHY_WR_DESKEWC_ CS1_CON4
+
+0x0440
+
+DDRPHY_WR_DESKEWC_ CS1_CON5
+
+0x044C
+
+DDRPHY_WR_DESKEWC_ CS1_CON6
+
+0x0458
+
+DDRPHY_WR_DESKEWC_ CS1_CON7
+
+0x0464
+
+DDRPHY_DM_DESKEWC_ CS1_CON0
+
+0x0470
+
+DDRPHY_WR_DESKEWL_ CS0_CON0
+
+0x0490
+
+DDRPHY_WR_DESKEWL_ CS0_CON1
+
+0x049C
+
+DDRPHY_WR_DESKEWL_ CS0_CON2
+
+0x04A8
+
+DDRPHY_WR_DESKEWL_ CS0_CON3
+
+0x04B4
+
+DDRPHY_WR_DESKEWL_ CS0_CON4
+
+0x04C0
+
+DDRPHY_WR_DESKEWL_ CS0_CON5
+
+0x04CC
+
+DDRPHY_WR_DESKEWL_ CS0_CON6
+
+0x04D8
+
+DDRPHY_WR_DESKEWL_ CS0_CON7
+
+0x04E4
+
+DDRPHY_DM_DESKEWL_C S0_CON0
+
+0x04F0
+
+DDRPHY_WR_DESKEWL_ CS1_CON0
+
+0x0500
+
+DDRPHY_WR_DESKEWL_ CS1_CON1
+
+0x050C
+
+DDRPHY_WR_DESKEWL_ CS1_CON2
+
+0x0518
+
+DDRPHY_WR_DESKEWL_ CS1_CON3
+
+0x0524
+
+DDRPHY_WR_DESKEWL_ CS1_CON4
+
+0x0530
+
+DDRPHY_WR_DESKEWL_ CS1_CON5
+
+0x053C
+
+Size
+
+Reset Value
+
+Description
+
+W 0x073F0000 ZQ Control Register 5
+
+W 0x00002121 ZQ Control Register 6
+
+W 0x00001414 ZQ Control Register 9
+
+W 0x00000707 ZQ Control Register 12
+
+W 0x00080000 ZQ And Test Control Register
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 1
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 2
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 3
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 4
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 5
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 6
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Center Code Control Register 7
+
+W
+
+0x00000000
+
+Write DM De-skew CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 1
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 2
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 3
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 4
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 5
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 6
+
+W
+
+0x00000000
+
+Write DQ De-skew CS0 Left Code Control Register 7
+
+W
+
+0x00000000
+
+Write DM De-skew CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 1
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 2
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 3
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 4
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 5
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+794
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_WR_DESKEWL_ CS1_CON6
+
+0x0548
+
+DDRPHY_WR_DESKEWL_ CS1_CON7
+
+0x0554
+
+DDRPHY_DM_DESKEWL_C S1_CON0
+
+0x0560
+
+DDRPHY_RD_DQS_VWML _CS0_CON0
+
+0x0574
+
+DDRPHY_RD_DQS_VWMC _CS0_CON0
+
+0x0580
+
+DDRPHY_GT_STATUS_CO N0
+
+0x058C
+
+DDRPHY_GT_STATUS_CO N1
+
+0x0590
+
+DDRPHY_GT_FSM_STATU S_CON1
+
+0x0594
+
+DDRPHY_CAL_GT_CS1_V WMC0
+
+0x05E4
+
+DDRPHY_CAL_GT_CS1_C YC
+
+0x05F0
+
+DDRPHY_CBT_CON5
+
+0x05F4
+
+DDRPHY_CBT_CMD
+
+0x05FC
+
+DDRPHY_CBT_CON0
+
+0x0600
+
+DDRPHY_CBT_CON2
+
+0x0608
+
+DDRPHY_CBT_CON3
+
+0x060C
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON_DM
+
+0x0610
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON0
+
+0x0614
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON1
+
+0x0620
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON2
+
+0x062C
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON3
+
+0x0638
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON4
+
+0x0644
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON5
+
+0x0650
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON6
+
+0x065C
+
+DDRPHY_RD_DESKEW_LE FT_CS0_CON7
+
+0x0668
+
+DDRPHY_FREQ_OFFSET_C ON
+
+0x0680
+
+DDRPHY_PRBS_CON0
+
+0x0684
+
+DDRPHY_PRBS_CON1
+
+0x0688
+
+DDRPHY_PRBS_CON2
+
+0x068C
+
+DDRPHY_PRBS_CON3
+
+0x0690
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 6
+
+W
+
+0x00000000
+
+Write DQ De-skew CS1 Left Code Control Register 7
+
+W
+
+0x00000000
+
+Write DM De-skew CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQS CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQS CS0 Center Code Control Register 0
+
+W 0x00000000 Gate Status Register 0
+
+W 0x00000000 Gate Status Register 1
+
+W 0x00000000 Gate FSM Status register 1
+
+W 0x00000000 Gate Training CS1 Center Code
+
+W 0x00000000 Gate Training CS1 Cycle
+
+W
+
+0x000D3400
+
+Command Bus Training Control Register 5
+
+W
+
+0x0000043F
+
+Command Bus Training CMD Register
+
+W
+
+0x0000004D
+
+Command Bus Training Control Register 0
+
+W
+
+0x00006300
+
+Command Bus Training Control Register 2
+
+W
+
+0x00C80000
+
+Command Bus Training Control Register 3
+
+W
+
+0x00000000
+
+Read DM De-skew CS0 Left Code Control Register
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 1
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 2
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 3
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 4
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 5
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 6
+
+W
+
+0x00000000
+
+Read DQ De-skew CS0 Left Code Control Register 7
+
+W
+
+0x00000000
+
+Frequency Offset Configure Register
+
+W 0x00050000 PRBS Control Register 0
+
+W 0x0542010C PRBS Control Register 1
+
+W 0x00000000 PRBS Control Register 2
+
+W 0x00000000 PRBS Control Register 3
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+795
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_PRBS_CON4
+
+0x0694
+
+DDRPHY_PRBS_CON5
+
+0x0698
+
+DDRPHY_PRBS_CON6
+
+0x069C
+
+DDRPHY_PRBS_CON7
+
+0x06A0
+
+DDRPHY_PRBS_CON8
+
+0x06A4
+
+DDRPHY_PRBS_CON9
+
+0x06A8
+
+DDRPHY_PRBS_CON10 0x06AC
+
+DDRPHY_PRBS_CON11 0x06B0
+
+DDRPHY_PRBS_CON12 0x06B4
+
+DDRPHY_PRBS_CON13 0x06B8
+
+DDRPHY_DUTY_CAL0
+
+0x06BC
+
+DDRPHY_MON_CON0
+
+0x0700
+
+DDRPHY_MON_CON1
+
+0x0704
+
+DDRPHY_MON_CON2
+
+0x0708
+
+DDRPHY_MON_CON3
+
+0x070C
+
+DDRPHY_MON_CON4
+
+0x0710
+
+DDRPHY_MON_CON5
+
+0x0714
+
+DDRPHY_MON_CON6
+
+0x0718
+
+DDRPHY_MON_CON7
+
+0x071C
+
+DDRPHY_WR_TRAIN_MON 0
+
+0x0720
+
+DDRPHY_LOCK_VAL0
+
+0x0728
+
+DDRPHY_LOCK_VAL1
+
+0x072C
+
+DDRPHY_LOCK_VAL2
+
+0x0730
+
+DDRPHY_WR_CHECK_CO N0
+
+0x0750
+
+DDRPHY_WR_CHECK_CO N1
+
+0x0754
+
+DDRPHY_WR_CHECK_CO N2
+
+0x0760
+
+DDRPHY_RD_DQS_VWML _CS1_CON0
+
+0x0764
+
+DDRPHY_RD_DQS_VWMC _CS1_CON0
+
+0x0768
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON_DM
+
+0x076C
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON0
+
+0x0770
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON1
+
+0x0774
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON2
+
+0x0778
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON3
+
+0x077C
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON4
+
+0x0780
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON5
+
+0x0784
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON6
+
+0x0788
+
+Size
+
+Reset Value
+
+Description
+
+W 0x00000000 PRBS Control Register 4
+
+W 0x00000000 PRBS Control Register 5
+
+W 0x00000000 PRBS Control Register 6
+
+W 0x00000000 PRBS Control Register 7
+
+W 0x800B0000 PRBS Control Register 8
+
+W 0x00FF00FF PRBS Control Register 9
+
+W 0x0F0F0F0F PRBS Control Register 10
+
+W 0x5A5A5A5A PRBS Control Register 11
+
+W 0xFF00FF00 PRBS Control Register 12
+
+W 0x00000055 PRBS Control Register 13
+
+W 0x00000000 Duty Calibration Register 0
+
+W 0x00020000 Debug Mode Register 0
+
+W 0x00000000 Debug Mode Register 1
+
+W 0x00000000 Debug Mode Register 2
+
+W 0x00000000 Debug Mode Register 3
+
+W 0x00000000 Debug Mode Register 4
+
+W 0x00000000 Debug Mode Register 5
+
+W 0x00000000 Debug Mode Register 6
+
+W 0x00000000 Debug Mode Register 7
+
+W 0x00000000 Write Training Monitor Register 0
+
+W
+
+0x001FFC01
+
+DVFS0 Master DLL Status Register 0
+
+W
+
+0x001FFC01
+
+DVFS1 Master DLL Status Register 1
+
+W 0x001FFC01 Master DLL Status Register 2
+
+W 0x00000000 FIFO Status Register 0
+
+W 0x00000000 FIFO Status Register 1
+
+W 0x00000000 FIFO Status Register 2
+
+W
+
+0x00000000
+
+Read DQS CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQS CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+Read DM De-skew CS1 Center Code Control Register
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 1
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 2
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 3
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 4
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 5
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 6
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+796
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_RD_DESKEW_CE NTER_CS1_CON7
+
+0x078C
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON_DM
+
+0x0790
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON0
+
+0x0794
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON1
+
+0x0798
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON2
+
+0x079C
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON3
+
+0x07A0
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON4
+
+0x07A4
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON5
+
+0x07A8
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON6
+
+0x07AC
+
+DDRPHY_RD_DESKEW_LE FT_CS1_CON7
+
+0x07B0
+
+DDRPHY_SW_RD_DQS_V WML_CS0_CON0
+
+0x07C0
+
+DDRPHY_SW_RD_DQS_V WMC_CS0_CON0
+
+0x07C4
+
+DDRPHY_SW_RD_DESKE
+
+W_CENTER_CS0_CON_D 0x07C8
+
+M
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON0
+
+0x07CC
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON1
+
+0x07D0
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON2
+
+0x07D4
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON3
+
+0x07D8
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON4
+
+0x07DC
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON5
+
+0x07E0
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON6
+
+0x07E4
+
+DDRPHY_SW_RD_DESKE W_CENTER_CS0_CON7
+
+0x07E8
+
+DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON_DM
+
+0x07F0
+
+DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON0
+
+0x07F4
+
+DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON1
+
+0x07F8
+
+DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON2
+
+0x07FC
+
+DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON3
+
+0x0800
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Center Code Control Register 7
+
+W
+
+0x00000000
+
+Read DM De-skew CS1 Left Code Control Register
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 1
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 2
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 3
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 4
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 5
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 6
+
+W
+
+0x00000000
+
+Read DQ De-skew CS1 Left Code Control Register 7
+
+W
+
+0x00000000
+
+SW Read DQS CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DQS CS0 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DM De-skew CS0 Center Code Control Register
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 1
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 2
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 3
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 4
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 5
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 6
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Center Code Control Register 7
+
+W
+
+0x00000000
+
+SW Read DM De-skew CS0 Left Code Control Register
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 1
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 2
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 3
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+797
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON4 DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON5 DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON6 DDRPHY_SW_RD_DESKE W_LEFT_CS0_CON7 DDRPHY_SW_RD_DQS_V WML_CS1_CON0 DDRPHY_SW_RD_DQS_V WMC_CS1_CON0 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON_D M DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON0 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON1 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON2 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON3 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON4 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON5 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON6 DDRPHY_SW_RD_DESKE W_CENTER_CS1_CON7 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON_DM DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON0 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON1 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON2 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON3 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON4 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON5 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON6 DDRPHY_SW_RD_DESKE W_LEFT_CS1_CON7 DDRPHY_SW_WR_DESKE WC_CS0_CON0 DDRPHY_SW_WR_DESKE WC_CS0_CON1
+
+0x0804 0x0808 0x080C 0x0810 0x0814 0x0818
+0x0820
+0x0824 0x0828 0x082C 0x0830 0x0834 0x0838 0x083C 0x0840 0x0850 0x0854 0x0858 0x085C 0x0860 0x0864 0x0868 0x086C 0x0870 0x0880 0x0884
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 4
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 5
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 6
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS0 Left Code Control Register 7
+
+W
+
+0x00000000
+
+SW Read DQS CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DQS CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DM De-skew CS1 Center Code Control Register
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 1
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 2
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 3
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 4
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 5
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 6
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Center Code Control Register 7
+
+W
+
+0x00000000
+
+SW Read DM De-skew CS1 Left Code Control Register
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 1
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 2
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 3
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 4
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 5
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 6
+
+W
+
+0x00000000
+
+SW Read DQ De-skew CS1 Left Code Control Register 7
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+798
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_SW_WR_DESKE WC_CS0_CON2
+
+0x0888
+
+DDRPHY_SW_WR_DESKE WC_CS0_CON3
+
+0x088C
+
+DDRPHY_SW_WR_DESKE WC_CS0_CON4
+
+0x0890
+
+DDRPHY_SW_WR_DESKE WC_CS0_CON5
+
+0x0894
+
+DDRPHY_SW_WR_DESKE WC_CS0_CON6
+
+0x0898
+
+DDRPHY_SW_WR_DESKE WC_CS0_CON7
+
+0x089C
+
+DDRPHY_SW_DM_DESKE WC_CS0_CON0
+
+0x08A0
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON0
+
+0x08B0
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON1
+
+0x08B4
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON2
+
+0x08B8
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON3
+
+0x08BC
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON4
+
+0x08C0
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON5
+
+0x08C4
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON6
+
+0x08C8
+
+DDRPHY_SW_WR_DESKE WL_CS0_CON7
+
+0x08CC
+
+DDRPHY_SW_WR_DM_DE SKEWL_CS0_CON0
+
+0x08D0
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON0
+
+0x08E0
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON1
+
+0x08E4
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON2
+
+0x08E8
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON3
+
+0x08EC
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON4
+
+0x08F0
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON5
+
+0x08F4
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON6
+
+0x08F8
+
+DDRPHY_SW_WR_DESKE WC_CS1_CON7
+
+0x08FC
+
+DDRPHY_SW_WR_DM_DE SKEWC_CS1_CON0
+
+0x0900
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON0
+
+0x0910
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON1
+
+0x0914
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 2
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 3
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 4
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 5
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 6
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Center Code Control Register 7
+
+W
+
+0x00000000
+
+SW Write DM De-skew CS0 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 1
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 2
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 3
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 4
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 5
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 6
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS0 Left Code Control Register 7
+
+W
+
+0x00000000
+
+SW Write DM De-skew CS0 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 1
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 2
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 3
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 4
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 5
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 6
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Center Code Control Register 7
+
+W
+
+0x00000000
+
+SW Write DM De-skew CS1 Center Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 0
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+799
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON2
+
+0x0918
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON3
+
+0x091C
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON4
+
+0x0920
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON5
+
+0x0924
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON6
+
+0x0928
+
+DDRPHY_SW_WR_DESKE WL_CS1_CON7
+
+0x092C
+
+DDRPHY_SW_DM_DESKE WL_CS1_CON0
+
+0x0930
+
+DDRPHY_DVFS0_CON5 0x0934
+
+DDRPHY_DVFS1_CON5 0x0938
+
+DDRPHY_CAL_WR_PATTE RN_CON5
+
+0x093C
+
+DDRPHY_CAL_WR_PATTE RN_CON6
+
+0x0940
+
+DDRPHY_CAL_WR_PATTE RN_CON7
+
+0x0944
+
+DDRPHY_CAL_WR_PATTE RN_CON8
+
+0x0948
+
+DDRPHY_CAL_WR_PATTE RN_CON9
+
+0x094C
+
+DDRPHY_CAL_WR_PATTE RN_CON10
+
+0x0950
+
+DDRPHY_CAL_WR_PATTE RN_CON11
+
+0x0954
+
+DDRPHY_CAL_WR_PATTE RN_CON12
+
+0x0958
+
+DDRPHY_CAL_WR_PATTE RN_CON13
+
+0x095C
+
+DDRPHY_CAL_WR_PATTE RN_CON14
+
+0x0960
+
+DDRPHY_CAL_WR_PATTE RN_CON15
+
+0x0964
+
+DDRPHY_CAL_WR_PATTE RN_CON16
+
+0x0968
+
+DDRPHY_CAL_WR_PATTE RN_CON17
+
+0x096C
+
+DDRPHY_CAL_WR_PATTE RN_CON18
+
+0x0970
+
+DDRPHY_CAL_WR_PATTE RN_CON19
+
+0x0974
+
+DDRPHY_READ_DQ_OFFS ET_CTRL0
+
+0x0978
+
+DDRPHY_READ_DQ_OFFS ET_CTRL1
+
+0x097C
+
+DDRPHY_READ_DQ_OFFS ET_CTRL2
+
+0x0980
+
+DDRPHY_READ_DQ_OFFS ET_CTRL3
+
+0x0984
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 2
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 3
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 4
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 5
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 6
+
+W
+
+0x00000000
+
+SW Write DQ De-skew CS1 Left Code Control Register 7
+
+W
+
+0x00000000
+
+SW Write DM De-skew CS1 Left Code Control Register 0
+
+W 0x00000040 DVFS0 Control Register 5
+
+W 0x00000040 DVFS1 Control Register 5
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 5
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 6
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 7
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 8
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 9
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 10
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 11
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 12
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 13
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 14
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 15
+
+W
+
+0x00FF00FF
+
+Write Calibration Pattern Register 16
+
+W
+
+0x00005555
+
+Write Calibration Pattern Register 17
+
+W
+
+0x00005555
+
+Write Calibration Pattern Register 18
+
+W
+
+0x00005555
+
+Write Calibration Pattern Register 19
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 0 For Rank0
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 1 For Rank0
+
+W
+
+0x00000037
+
+Read DQ Offset Control Register 2 For Rank0
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 3 For Rank0
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+800
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_READ_DQ_OFFS ET_CTRL4
+
+0x0988
+
+DDRPHY_READ_DQ_OFFS ET_CTRL5
+
+0x098C
+
+DDRPHY_READ_DQ_OFFS ET_CTRL0_CS1
+
+0x0990
+
+DDRPHY_READ_DQ_OFFS ET_CTRL1_CS1
+
+0x0994
+
+DDRPHY_READ_DQ_OFFS ET_CTRL2_CS1
+
+0x0998
+
+DDRPHY_READ_DQ_OFFS ET_CTRL3_CS1
+
+0x099C
+
+DDRPHY_READ_DQ_OFFS ET_CTRL4_CS1
+
+0x09A0
+
+DDRPHY_READ_DQ_OFFS ET_CTRL5_CS1
+
+0x09A4
+
+DDRPHY_WRITE_DQ_DLI NE_DUTY_CTRL0
+
+0x09A8
+
+DDRPHY_WRITE_DQ_DLI NE_DUTY_CTRL1
+
+0x09AC
+
+DDRPHY_READ_DQ_DLIN E_DUTY_CTRL0
+
+0x09B0
+
+DDRPHY_READ_DQ_DLIN E_DUTY_CTRL1
+
+0x09B4
+
+DDRPHY_READ_DQ_DLIN E_DUTY_CTRL2
+
+0x09B8
+
+DDRPHY_READ_DQ_DLIN E_DUTY_CTRL3
+
+0x09BC
+
+DDRPHY_WRITE_DQS_DL INE_DUTY_CTRL0
+
+0x09C0
+
+DDRPHY_DQ_SEL_CTRL0 0x09C4
+
+DDRPHY_DQ_SEL_CTRL1 0x09C8
+
+DDRPHY_DQ_SEL_CTRL2 0x09CC
+
+DDRPHY_DQ_SEL_CTRL3 0x09D0
+
+DDRPHY_DQ_SEL_CTRL4 0x09D4
+
+DDRPHY_DQ_SEL_CTRL5 0x09D8
+
+DDRPHY_DQ_SEL_CTRL6 0x09DC
+
+DDRPHY_DQ_SEL_CTRL7 0x09E0
+
+DDRPHY_CK_DLINE_DUTY _CTRL0
+
+0x09E4
+
+DDRPHY_IO_DUTY_CTRL0 0x09E8
+
+DDRPHY_IO_DUTY_CTRL1 0x09EC
+
+DDRPHY_IO_DUTY_CTRL2 0x09F0
+
+DDRPHY_IO_DUTY_CTRL3 0x09F4
+DDRPHY_IO_DUTY_CTRL4 0x09F8 DDRPHY_IO_DUTY_CTRL5 0x09FC DDRPHY_DVFS0_CON6 0x0A00 DDRPHY_DVFS1_CON6 0x0A04
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 4 For Rank0
+
+W
+
+0x00000037
+
+Read DQ Offset Control Register 5 For Rank0
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 0 For Rank1
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 1 For Rank1
+
+W
+
+0x00000037
+
+Read DQ Offset Control Register 2 For Rank1
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 3 For Rank1
+
+W
+
+0x37373737
+
+Read DQ Offset Control Register 4 For Rank1
+
+W
+
+0x00000037
+
+Read DQ Offset Control Register 5 For Rank1
+
+W 0x00000000 Write DQ Duty Control Register 0
+
+W 0x00000000 Write DQ Duty Control Register 1
+
+W 0x00000000 Read DQ Duty Control Register 0
+
+W 0x00000000 Read DQ Duty Control Register 1
+
+W 0x00000000 Read DQ Duty Control Register 2
+
+W 0x00000000 Read DQ Duty Control Register 3
+
+W 0x00000000 Write DQS Duty Control Register 0
+
+W 0x02492492 DQ DLL Select Control Register 0 W 0x02492492 DQ DLL Select Control Register 1 W 0x02492492 DQ DLL Select Control Register 2 W 0x02492492 DQ DLL Select Control Register 3 W 0x02492492 DQ DLL Select Control Register 4 W 0x02492492 DQ DLL Select Control Register 5 W 0x02492492 DQ DLL Select Control Register 6 W 0x02492492 DQ DLL Select Control Register 7
+
+W 0x00000000 CK Duty Control Register 0
+
+W
+
+0x2DB6DB6 D
+
+IO Duty Control Register 0
+
+W
+
+0x2DB6DB6 D
+
+IO Duty Control Register 1
+
+W
+
+0x1B6DB6D B
+
+IO Duty Control Register 2
+
+W
+
+0x1B6DB6D B
+
+IO Duty Control Register 3
+
+W 0x00000000 IO Duty Control Register 4
+
+W 0x0000001D IO Duty Control Register 5
+
+W 0x003F0000 DVFS0 Control Register 6
+
+W 0x003F0000 DVFS1 Control Register 6
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+801
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_DQOENDESKEW CODE0
+
+0x0A08
+
+DDRPHY_DQOENDESKEW CODE1
+
+0x0A0C
+
+DDRPHY_DQSOENDESKE WCODE
+
+0x0A10
+
+DDRPHY_DTB
+
+0x0A14
+
+DDRPHY_GTCC_CON0
+
+0x0A18
+
+DDRPHY_RANK1_CON0 0x0A1C
+
+DDRPHY_SCHD_CON0 0x0A20
+
+DDRPHY_SCHD_TRAIN_C ON0
+
+0x0A24
+
+DDRPHY_SCHD_TRAIN_C ON1
+
+0x0A28
+
+DDRPHY_SCHD_TIME_CO N0
+
+0x0A2C
+
+DDRPHY_SCHD_TIME_CO N1
+
+0x0A30
+
+DDRPHY_SCHD_TIME_CO N2
+
+0x0A34
+
+DDRPHY_SCHD_TIME_CO N3
+
+0x0A38
+
+DDRPHY_DVFS0_SCHD_T IME_CON0
+
+0x0A3C
+
+DDRPHY_DVFS0_SCHD_T IME_CON1
+
+0x0A40
+
+DDRPHY_DVFS0_SCHD_T IME_CON2
+
+0x0A44
+
+DDRPHY_DVFS0_SCHD_T IME_CON3
+
+0x0A48
+
+DDRPHY_DVFS1_SCHD_T IME_CON0
+
+0x0A4C
+
+DDRPHY_DVFS1_SCHD_T IME_CON1
+
+0x0A50
+
+DDRPHY_DVFS1_SCHD_T IME_CON2
+
+0x0A54
+
+DDRPHY_DVFS1_SCHD_T IME_CON3
+
+0x0A58
+
+DDRPHY_SCHD_DIRECT_ CMD0
+
+0x0A5C
+
+DDRPHY_SCHD_DIRECT_ CMD1
+
+0x0A60
+
+DDRPHY_SCHD_DIRECT_ CMD2
+
+0x0A64
+
+DDRPHY_SCHD_DIRECT_ CMD3
+
+0x0A68
+
+DDRPHY_SCHD_DIRECT_ CMD4
+
+0x0A6C
+
+DDRPHY_SCHD_CMD_CO N0
+
+0x0A70
+
+DDRPHY_SCHD_CMD_CO N1
+
+0x0A74
+
+DDRPHY_SCHD_CMD_CO N2
+
+0x0A78
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+DQ Output Enable De-skew Code Register 0
+
+W
+
+0x00000000
+
+DQ Output Enable De-skew Code Register 1
+
+W
+
+0x00000000
+
+DQS Output Enable De-skew Code Register
+
+W 0x00000000 DTB Control Register
+
+W 0x00000000 Gate Center Control Register 0
+
+W 0x00020820 Rank1 RL Control Register 0
+
+W 0x00000040 Scheduler Control Register 0
+
+W
+
+0x00000000
+
+Scheduler Training Control Register 0
+
+W
+
+0x000403F5
+
+Scheduler Training Control Register 1
+
+W
+
+0x005A01D2
+
+Scheduler CMD Timing Control Register 0
+
+W
+
+0x640D1008
+
+Scheduler CMD Timing Control Register 1
+
+W
+
+0x03C74780
+
+Scheduler CMD Timing Control Register 2
+
+W
+
+0x00000080
+
+Scheduler CMD Timing Control Register 3
+
+W
+
+0x005A01D2
+
+DVFS0 Scheduler CMD Timing Control Register 0
+
+W
+
+0x640D1008
+
+DVFS0 Scheduler CMD Timing Control Register 1
+
+W
+
+0x03C74780
+
+DVFS0 Scheduler CMD Timing Control Register 2
+
+W
+
+0x04000001
+
+DVFS0 Scheduler CMD Timing Control Register 3
+
+W
+
+0x005A01D2
+
+DVFS1 Scheduler CMD Timing Control Register 0
+
+W
+
+0x640D1008
+
+DVFS1 Scheduler CMD Timing Control Register 1
+
+W
+
+0x03C74780
+
+DVFS1 Scheduler CMD Timing Control Register 2
+
+W
+
+0x04000001
+
+DVFS1 Scheduler CMD Timing Control Register 3
+
+W 0x00000000 Scheduler Direct CMD Register 0
+
+W 0x00000000 Scheduler Direct CMD Register 1
+
+W 0x00000000 Scheduler Direct CMD Register 2
+
+W 0x00000000 Scheduler Direct CMD Register 3
+
+W 0x00000000 Scheduler Direct CMD Register 4
+
+W 0x00000001 Scheduler CMD Control Register 0
+
+W 0x00000000 Scheduler CMD Control Register 1
+
+W 0x00000000 Scheduler CMD Control Register 2
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+802
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_OP_CODE_RDC 0x0A7C
+
+DDRPHY_LP4_MR_OP0 0x0A80
+
+DDRPHY_LP4_MR_OP1 0x0A84
+
+DDRPHY_LP5_MR_OP0 0x0A88
+
+DDRPHY_LP5_MR_OP1 0x0A8C
+
+DDRPHY_SCHD_FSM
+
+0x0A90
+
+DDRPHY_CLKMODE_CON 0x0A94
+
+DDRPHY_CASWIZZLE_CO N
+
+0x0A98
+
+DDRPHY_TDLL_CON0
+
+0x0A9C
+
+DDRPHY_TDLL_CON1
+
+0x0AA0
+
+DDRPHY_TDLL_MON0_DS 0
+
+0x0AA4
+
+DDRPHY_TDLL_MON1_DS 0
+
+0x0AA8
+
+DDRPHY_TDLL_MON0_DS 1
+
+0x0AAC
+
+DDRPHY_TDLL_MON1_DS 1
+
+0x0AB0
+
+DDRPHY_DQRPARITY_LEF T_DS0
+
+0x0AB4
+
+DDRPHY_DQRPARITY_RIG HT_DS0
+
+0x0AB8
+
+DDRPHY_DQFPARITY_LEF T_DS0
+
+0x0ABC
+
+DDRPHY_DQFPARITY_RIG HT_DS0
+
+0x0AC0
+
+DDRPHY_DQRPARITY_LEF T_DS1
+
+0x0AC4
+
+DDRPHY_DQRPARITY_RIG HT_DS1
+
+0x0AC8
+
+DDRPHY_DQFPARITY_LEF T_DS1
+
+0x0ACC
+
+DDRPHY_DQFPARITY_RIG HT_DS1
+
+0x0AD0
+
+DDRPHY_READCAL_URG_ DS0
+
+0x0AD4
+
+DDRPHY_READCAL_URG_ DS1
+
+0x0AD8
+
+DDRPHY_WCK2CKSYNC_C ON0
+
+0x0ADC
+
+DDRPHY_WCK2CKSYNC_C ON1
+
+0x0AE0
+
+DDRPHY_DVFS0_WCK2CK SYNC_CON1
+
+0x0AE4
+
+DDRPHY_DVFS1_WCK2CK SYNC_CON1
+
+0x0AE8
+
+DDRPHY_SCHD_CMD_GAT ING0
+
+0x0AEC
+
+DDRPHY_SCHD_CMD_GAT ING1
+
+0x0AF0
+
+DDRPHY_DVFS0_WCK2CK SYNC_CON0
+
+0x0AF4
+
+Size
+
+Reset Value
+
+Description
+
+W 0x5555EEEE OP Code Register
+
+W 0x00000000 LPDDR4 MR Operand 0
+
+W 0x00000000 LPDDR4 MR Operand 1
+
+W 0x00000000 LPDDR5 MR Operand 0
+
+W 0x00000000 LPDDR5 MR Operand 1
+
+W 0x00000000 Scheduler FSM Monitor
+
+W 0x00000009 PHY Clock Mode Control Register
+
+W 0x65432100 CA Swizzle Control Register
+
+W 0x00000000 TDLL Control Register 0
+
+W 0x00000000 TDLL Control Register 1
+
+W
+
+0x00000000
+
+TDLL Monitor Register 0 For Data Slice 0
+
+W
+
+0x00000000
+
+TDLL Monitor Register 1 For Data Slice 0
+
+W
+
+0x00000000
+
+TDLL Monitor Register 0 For Data Slice 1
+
+W
+
+0x00000000
+
+TDLL Monitor Register 1 For Data Slice 1
+
+W
+
+0x00000000
+
+DQ Rising Parity Left For Data Slice 0
+
+W
+
+0x00000000
+
+DQ Rising Parity Right For Data Slice 0
+
+W
+
+0x00000000
+
+DQ Falling Parity Left For Data Slice 0
+
+W
+
+0x00000000
+
+DQ Falling Parity Right For Data Slice 0
+
+W
+
+0x00000000
+
+DQ Rising Parity Left For Data Slice 1
+
+W
+
+0x00000000
+
+DQ Rising Parity Right For Data Slice 1
+
+W
+
+0x00000000
+
+DQ Falling Parity Left For Data Slice 1
+
+W
+
+0x00000000
+
+DQ Falling Parity Right For Data Slice 1
+
+W 0x00000000 Read Calibration URG Data Slice 0
+
+W 0x00000000 Read Calibration URG Data Slice 1
+
+W 0x00000000 WCK2CK SYNC CON0
+
+W 0x23340758 WCK2CK SYNC CON1
+
+W 0x23340758 DVFS0 WCK2CK SYNC CON1
+
+W 0x23340758 DVFS1 WCK2CK SYNC CON1
+
+W 0x00000000 Scheduler Direct CMD Gating 0
+
+W 0x00000000 Scheduler Direct CMD Gating 1
+
+W 0x00000000 DVFS0 WCK2CK SYNC CON0
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+803
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_DVFS1_WCK2CK SYNC_CON0
+
+0x0AF8
+
+DDRPHY_MDLL_CON2
+
+0x0AFC
+
+DDRPHY_TESTILP5_DQ0 0x0B00
+
+DDRPHY_TESTILP5_DQ1 0x0B04
+
+DDRPHY_TESTILP5_DQ2 0x0B08
+
+DDRPHY_TESTILP5_DQ3 0x0B0C
+
+DDRPHY_TESTILP5_DQ4 0x0B10
+
+DDRPHY_TESTILP5_DQ5 0x0B14
+
+DDRPHY_TESTILP5_DQ6 0x0B18
+
+DDRPHY_TESTILP5_DQ7 0x0B1C
+
+DDRPHY_TESTILP5_DQ8 0x0B20
+
+DDRPHY_TESTILP5_DQ9 0x0B24
+
+DDRPHY_TESTILP5_DQ10 0x0B28
+
+DDRPHY_TESTILP5_DQ11 0x0B2C
+
+DDRPHY_TESTILP5_DQ12 0x0B30
+
+DDRPHY_TESTILP5_DQ13 0x0B34
+
+DDRPHY_TESTILP5_DQ14 0x0B38
+
+DDRPHY_TESTILP5_DQ15 0x0B3C
+
+DDRPHY_TESTILP5_DM0 0x0B40
+
+DDRPHY_TESTILP5_DM1 0x0B44
+
+DDRPHY_TESTILP5_DQS0 0x0B48
+
+DDRPHY_TESTILP5_DQS1 0x0B4C
+
+DDRPHY_TESTILP5_CK 0x0B50
+
+DDRPHY_TESTILP5_CA0 0x0B54
+
+DDRPHY_TESTILP5_CA1 0x0B58
+
+DDRPHY_TESTILP5_CA2 0x0B5C
+
+DDRPHY_TESTILP5_CA3 0x0B60
+
+DDRPHY_TESTILP5_CA4 0x0B64
+
+DDRPHY_TESTILP5_CA5 0x0B68
+
+DDRPHY_TESTILP5_CA6 0x0B6C
+
+DDRPHY_TESTILP5_CS0 0x0B70
+
+DDRPHY_TESTILP5_CS1 0x0B74
+
+DDRPHY_TESTILP5_WCK0 0x0B78
+
+DDRPHY_TESTILP5_WCK1 0x0B7C
+
+DDRPHY_DQSDUTY_CON0 0x0B80
+
+DDRPHY_DQSDUTY_CON1 0x0B84
+
+DDRPHY_DQSDUTY_CON2 0x0B88
+
+DDRPHY_DQSDUTY_CON3 0x0B8C
+
+DDRPHY_DQSDUTY_CON4 0x0B90
+
+DDRPHY_DQSDUTY_CON5 0x0B94
+
+DDRPHY_DQSDUTY_CON6 0x0B98
+
+DDRPHY_DQSDUTY_CON7 0x0B9C
+
+DDRPHY_MON_RCNT0 0x0BA0
+
+DDRPHY_MON_RCNT1 0x0BA4
+
+DDRPHY_MON_RCNT2 0x0BA8
+
+DDRPHY_MON_RCNT3 0x0BAC
+
+DDRPHY_CMD_DESKEWC _CODE0
+
+0x0BB0
+
+DDRPHY_CMD_DESKEWC _CODE1
+
+0x0BB4
+
+Size
+
+Reset Value
+
+Description
+
+W 0x00000000 DVFS1 WCK2CK SYNC CON0
+
+W 0x00000001 Master DLL Control Register 2
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ0
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ1
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ2
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ3
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ4
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ5
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ6
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ7
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ8
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ9
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ10
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ11
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ12
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ13
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ14
+
+W 0x000199E0 TEST Input Port For LP4/5 DQ15
+
+W 0x000199E0 TEST Input Port For LP4/5 DM0
+
+W 0x000199E0 TEST Input Port For LP4/5 DM1
+
+W 0x000199E0 TEST Input Port For LP4/5 DQS0
+
+W 0x000199E0 TEST Input Port For LP4/5 DQS1
+
+W 0x000199E0 TEST Input Port For LP4/5 CK
+
+W 0x000199E0 TEST Input Port For LP4/5 CA0
+
+W 0x000199E0 TEST Input Port For LP4/5 CA1
+
+W 0x000199E0 TEST Input Port For LP4/5 CA2
+
+W 0x000199E0 TEST Input Port For LP4/5 CA3
+
+W 0x000199E0 TEST Input Port For LP4/5 CA4
+
+W 0x000199E0 TEST Input Port For LP4/5 CA5
+
+W 0x000199E0 TEST Input Port For LP5 CA6
+
+W 0x000199E0 TEST Input Port For LP4/5 CS0
+
+W 0x000199E0 TEST Input Port For LP4/5 CS1
+
+W 0x000199E0 TEST Input Port For LP5 WCK0
+
+W 0x000199E0 TEST Input Port For LP5 WCK1
+
+W 0x00000000 DQS Duty Control Register 0
+
+W 0x00000000 DQS Duty Control Register 1
+
+W 0x00000000 DQS Duty Control Register 2
+
+W 0x00000000 DQS Duty Control Register 3
+
+W 0x00000000 DQS Duty Control Register 4
+
+W 0x00000000 DQS Duty Control Register 5
+
+W 0x00000000 DQS Duty Control Register 6
+
+W 0x00000000 DQS Duty Control Register 7
+
+W 0x00000000 Monitor RSTN 0
+
+W 0x00000000 Monitor RSTN 1
+
+W 0x00000000 Monitor RSTN 2
+
+W 0x00000000 Monitor RSTN 3
+
+W
+
+0x00000000
+
+CMD De-skew Center Code Register 0
+
+W
+
+0x00000000
+
+CMD De-skew Center Code Register 1
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+804
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_CMD_DESKEWC _CODE2
+
+0x0BB8
+
+DDRPHY_CMD_DESKEWC _CODE3
+
+0x0BBC
+
+DDRPHY_CMD_DESKEWC _CODE4
+
+0x0BC0
+
+DDRPHY_CBT_CAL_STAT0 0x0BC4
+
+DDRPHY_CMD_LEFT_COD E0
+
+0x0BC8
+
+DDRPHY_CMD_LEFT_COD E1
+
+0x0BCC
+
+DDRPHY_CMD_LEFT_COD E2
+
+0x0BD0
+
+DDRPHY_CMD_LEFT_COD E4
+
+0x0BD8
+
+DDRPHY_CMD_RIGHT_CO DE0
+
+0x0BDC
+
+DDRPHY_CMD_RIGHT_CO DE1
+
+0x0BE0
+
+DDRPHY_CMD_RIGHT_CO DE2
+
+0x0BE4
+
+DDRPHY_CMD_RIGHT_CO DE4
+
+0x0BEC
+
+DDRPHY_DVFS0_CLKMOD E_CON
+
+0x0BF0
+
+DDRPHY_DVFS1_CLKMOD E_CON
+
+0x0BF4
+
+DDRPHY_DVFS0_DCC_CO N0
+
+0x0BF8
+
+DDRPHY_DVFS1_DCC_CO N0
+
+0x0BFC
+
+DDRPHY_PTC_CON0
+
+0x0C00
+
+DDRPHY_PTC_CON1
+
+0x0C04
+
+DDRPHY_PTC_CON2
+
+0x0C08
+
+DDRPHY_PTC_CON3
+
+0x0C0C
+
+DDRPHY_PTC_CON4
+
+0x0C10
+
+DDRPHY_PTC_CON5
+
+0x0C14
+
+DDRPHY_PTC_CON6
+
+0x0C18
+
+DDRPHY_PTC_CON7
+
+0x0C1C
+
+DDRPHY_PTC_CON8
+
+0x0C20
+
+DDRPHY_PTC_CON9
+
+0x0C24
+
+DDRPHY_PTC_CON10
+
+0x0C28
+
+DDRPHY_PTC_CON11
+
+0x0C2C
+
+DDRPHY_PTC_CON12
+
+0x0C30
+
+DDRPHY_PTC_CON13
+
+0x0C34
+
+DDRPHY_PTC_CON14
+
+0x0C38
+
+DDRPHY_PTC_CON15
+
+0x0C3C
+
+DDRPHY_PTC_CON16
+
+0x0C40
+
+DDRPHY_PTC_CON20
+
+0x0C50
+
+DDRPHY_PTC_CON21
+
+0x0C54
+
+DDRPHY_PTC_CON22
+
+0x0C58
+
+DDRPHY_Periodic_ZQ_CO N
+
+0x0C70
+
+Size
+
+Reset Value
+
+Description
+
+W
+
+0x00000000
+
+CMD De-skew Center Code Register 2
+
+W
+
+0x00000000
+
+CMD De-skew Center Code Register 3
+
+W
+
+0x00000000
+
+CMD De-skew Center Code Register 4
+
+W 0x00000000 CBT Calibration Status Register
+
+W 0x00000000 CMD Left Code Register 0
+
+W 0x00000000 CMD Left Code Register 1
+
+W 0x00000000 CMD Left Code Register 2
+
+W 0x00000000 CMD Left Code Register 4
+
+W 0x00000000 CMD Right Code Register 0
+
+W 0x00000000 CMD Right Code Register 1
+
+W 0x00000000 CMD Right Code Register 2
+
+W 0x00000000 CMD Right Code Register 4
+
+W
+
+0x00000009
+
+PHY Clock Mode Control Register For DVFS0
+
+W
+
+0x00000009
+
+PHY Clock Mode Control Register For DVFS1
+
+W 0x00000000 DVFS0 DCC Control Register 0
+
+W 0x00000000 DVFS1 DCC Control Register 0
+W 0x26770000 PTC Configure Register 0 W 0x00000011 PTC Configure Register 1 W 0x10008080 PTC Configure Register 2 W 0x00000000 PTC Configure Register 3 W 0x00000000 PTC Configure Register 4 W 0x00000000 PTC Configure Register 5 W 0x02021100 PTC Configure Register 6 W 0x00FF00FF PTC Configure Register 7 W 0x00FF00FF PTC Configure Register 8 W 0x00FF00FF PTC Configure Register 9 W 0x00FF00FF PTC Configure Register 10 W 0x80000000 PTC Configure Register 11 W 0x00000000 PTC Configure Register 12 W 0x00000000 PTC Configure Register 13 W 0x00000000 PTC Configure Register 14 W 0x00000000 PTC Configure Register 15 W 0x00000000 PTC Configure Register 16 W 0x00000000 PTC Configure Register 20 W 0x00000000 PTC Configure Register 21 W 0x00000000 PTC Configure Register 22
+W 0x000403F5 Periodic ZQ Control Register
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+805
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ0
+
+0x0D00
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ0
+
+0x0D04
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ1
+
+0x0D08
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ1
+
+0x0D0C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ2
+
+0x0D10
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ2
+
+0x0D14
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ3
+
+0x0D18
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ3
+
+0x0D1C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ4
+
+0x0D20
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ4
+
+0x0D24
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ5
+
+0x0D28
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ5
+
+0x0D2C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ6
+
+0x0D30
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ6
+
+0x0D34
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ7
+
+0x0D38
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ7
+
+0x0D3C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ8
+
+0x0D40
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ8
+
+0x0D44
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ9
+
+0x0D48
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ9
+
+0x0D4C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ10
+
+0x0D50
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ10
+
+0x0D54
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ11
+
+0x0D58
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ11
+
+0x0D5C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ12
+
+0x0D60
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ12
+
+0x0D64
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ13
+
+0x0D68
+
+Size
+
+Reset Value
+
+Description
+
+W 0x00000000 PRBS Left Margin For DQ0
+
+W 0x00000000 PRBS Right Margin For DQ0
+
+W 0x00000000 PRBS Left Margin For DQ1
+
+W 0x00000000 PRBS Right Margin For DQ1
+
+W 0x00000000 PRBS Left Margin For DQ2
+
+W 0x00000000 PRBS Right Margin For DQ2
+
+W 0x00000000 PRBS Left Margin For DQ3
+
+W 0x00000000 PRBS Right Margin For DQ3
+
+W 0x00000000 PRBS Left Margin For DQ4
+
+W 0x00000000 PRBS Right Margin For DQ4
+
+W 0x00000000 PRBS Left Margin For DQ5
+
+W 0x00000000 PRBS Right Margin For DQ5
+
+W 0x00000000 PRBS Left Margin For DQ6
+
+W 0x00000000 PRBS Right Margin For DQ6
+
+W 0x00000000 PRBS Left Margin For DQ7
+
+W 0x00000000 PRBS Right Margin For DQ7
+
+W 0x00000000 PRBS Left Margin For DQ8
+
+W 0x00000000 PRBS Right Margin For DQ8
+
+W 0x00000000 PRBS Left Margin For DQ9
+
+W 0x00000000 PRBS Right Margin For DQ9
+
+W 0x00000000 PRBS Left Margin For DQ10
+
+W 0x00000000 PRBS Right Margin For DQ10
+
+W 0x00000000 PRBS Left Margin For DQ11
+
+W 0x00000000 PRBS Right Margin For DQ11
+
+W 0x00000000 PRBS Left Margin For DQ12
+
+W 0x00000000 PRBS Right Margin For DQ12
+
+W 0x00000000 PRBS Left Margin For DQ13
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+806
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ13
+
+0x0D6C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ14
+
+0x0D70
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ14
+
+0x0D74
+
+DDRPHY_PRBS_LEFT_MA RGIN_DQ15
+
+0x0D78
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DQ15
+
+0x0D7C
+
+DDRPHY_PRBS_LEFT_MA RGIN_DM0
+
+0x0D80
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DM0
+
+0x0D84
+
+DDRPHY_PRBS_LEFT_MA RGIN_DM1
+
+0x0D88
+
+DDRPHY_PRBS_RIGHT_M ARGIN_DM1
+
+0x0D8C
+
+DDRPHY_WR_BYTE0_CYC _CS0_CODE
+
+0x0DC0
+
+DDRPHY_WR_BYTE1_CYC _CS0_CODE
+
+0x0DC4
+
+DDRPHY_WR_BYTE0_CYC _CS1_CODE
+
+0x0DC8
+
+DDRPHY_WR_BYTE1_CYC _CS1_CODE
+
+0x0DCC
+
+DDRPHY_SW_WR_BYTE0_ CYC_CS0_CODE
+
+0x0DD0
+
+DDRPHY_SW_WR_BYTE1_ CYC_CS0_CODE
+
+0x0DD4
+
+DDRPHY_SW_WR_BYTE0_ CYC_CS1_CODE
+
+0x0DD8
+
+DDRPHY_SW_WR_BYTE1_ CYC_CS1_CODE
+
+0x0DDC
+
+DDRPHY_WCKOSC_CON0 0x0DE0
+
+DDRPHY_WCKOSC_CON1 0x0DE4
+
+DDRPHY_WCKOSC_CON2 0x0DE8
+
+DDRPHY_WCKOSC_CON3 0x0DEC
+
+DDRPHY_DVFS0_WCKOSC _CON0
+
+0x0DF0
+
+DDRPHY_DVFS1_WCKOSC _CON0
+
+0x0DF4
+
+DDRPHY_WRTRN_PARA_C ON0
+
+0x0DF8
+
+DDRPHY_DVFS0_WRTRN_ PARA_CON0
+
+0x0DFC
+
+DDRPHY_DVFS1_WRTRN_ PARA_CON0
+
+0x0E00
+
+DDRPHY_DFI_LP_CON0 0x0E04
+
+DDRPHY_LOCK_CHECK_C ON
+
+0x0E08
+
+DDRPHY_DFI_RDDATA0 0x0E10
+
+DDRPHY_DFI_RDDATA1 0x0E14
+
+DDRPHY_DFI_RDDATA2 0x0E18
+
+Size
+
+Reset Value
+
+Description
+
+W 0x00000000 PRBS Right Margin For DQ13
+
+W 0x00000000 PRBS Left Margin For DQ14
+
+W 0x00000000 PRBS Right Margin For DQ14
+
+W 0x00000000 PRBS Left Margin For DQ15
+
+W 0x00000000 PRBS Right Margin For DQ15
+
+W 0x00000000 PRBS Left Margin For DM0
+
+W 0x00000000 PRBS Right Margin For DM0
+
+W 0x00000000 PRBS Left Margin For DM1
+
+W 0x00000000 PRBS Right Margin For DM1
+
+W 0x00000000 Write CS0 Byte0 Cycle Code
+
+W 0x00000000 Write CS0 Byte1 Cycle Code
+
+W 0x00000000 Write CS1 Byte0 Cycle Code
+
+W 0x00000000 Write CS1 Byte1 Cycle Code
+
+W 0x00000000 SW Write CS0 Byte0 Cycle Code
+
+W 0x00000000 SW Write CS0 Byte1 Cycle Code
+
+W 0x00000000 SW Write CS1 Byte0 Cycle Code
+
+W 0x00000000 SW Write CS1 Byte1 Cycle Code
+
+W 0x04373F00 WCK Oscillator Control Register 0
+
+W 0x00000182 WCK Oscillator Control Register 1
+
+W 0x00010001 WCK Oscillator Control Register 2
+
+W 0x80000000 WCK Oscillator Control Register 3
+
+W
+
+0x04373F00
+
+DVFS0 WCK Oscillator Control Register 0
+
+W
+
+0x04373F00
+
+DVFS1 WCK Oscillator Control Register 0
+
+W
+
+0x01200316
+
+Write Training Parameter Configure Register 0
+
+W
+
+0x01200316
+
+DVFS0 Write Training Parameter Configure Register 0
+
+W
+
+0x01200316
+
+DVFS1 Write Training Parameter Configure Register 0
+
+W 0x00002322 DFI Low Power Control Register 0
+
+W 0x00007104 Lock Check Control Register
+
+W 0x00000000 DFI Read Data Burst 0 W 0x00000000 DFI Read Data Burst 1 W 0x00000000 DFI Read Data Burst 2
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+807
+
+RK3576 TRM (Part 2)
+
+Name
+
+Offset Size
+
+Reset Value
+
+Description
+
+DDRPHY_DFI_RDDATA3 0x0E1C W 0x00000000 DFI Read Data Burst 3
+
+DDRPHY_DFI_RDDATA4 0x0E20 W 0x00000000 DFI Read Data Burst 4
+
+DDRPHY_DFI_RDDATA5 0x0E24 W 0x00000000 DFI Read Data Burst 5
+
+DDRPHY_DFI_RDDATA6 0x0E28 W 0x00000000 DFI Read Data Burst 6
+
+DDRPHY_DFI_RDDATA7 0x0E2C W 0x00000000 DFI Read Data Burst 7
+
+DDRPHY_DFI_RDDATA_D M
+
+0x0E30
+
+W 0x00000000 DFI Read DM Burst
+
+DDRPHY_LP5_MR_OP2 0x0E34 W 0xC6BBC6BB LPDDR5 MR Operand Register 2
+
+DDRPHY_DVFS0_LP5_MR _OP2
+
+0x0E38
+
+W
+
+0xC6BBC6BB
+
+DVFS0 LPDDR5 Register 2
+
+MR
+
+Operand
+
+DDRPHY_DVFS1_LP5_MR _OP2
+
+0x0E3C
+
+W
+
+0xC6BBC6BB
+
+DVFS1 LPDDR5 Register 2
+
+MR
+
+Operand
+
+DDRPHY_PHYUPD_PARA_ CON0
+
+0x0E40
+
+W
+
+0x0000103F
+
+PHY Update Parameter Configure Register 0
+
+DDRPHY_DVFS0_PHYUPD _PARA_CON0
+
+0x0E44
+
+W
+
+0x0000103F
+
+PHY Update Parameter Configure Register 0 For DVFS0
+
+DDRPHY_DVFS1_PHYUPD _PARA_CON0
+
+0x0E48
+
+W
+
+0x0000103F
+
+PHY Update Parameter Configure Register 0 For DVFS1
+
+Notes:Size:B- Byte (8 bits) access, HW- Half WORD (16 bits) access, W-WORD (32 bits) access, DW-
+
+Double WORD (64 bits) access
+
+7.4.6 Detail Registers Description For DDRPHY
+
+DDRPHY_GNR_CON0
+
+Address: Operational Base + offset (0x0000)
+
+Bit Attr Reset Value
+
+Description
+
+ctrl_upd_time
+
+It controls when DLL is updated. Clock period information from
+
+master DLL will be updated to slave DLLs by DLL update.
+
+31:30 RW 0x1
+
+2'b00: Update always 2'b01: To update depending on "ctrl_flock"
+
+2'b10: To update periodically with interval defined by
+
+ctrl_upd_interval
+
+2'b11: Don't update DLL
+
+ctrl_upd_range
+
+It decides how many differences between the new lock value and
+
+the current lock value which is used in slave DLL is needed for
+
+updating lock value.
+
+upd_range_ext = 2'b00 (default)
+
+2'b00: Update when difference is greater than 0 tFS.
+
+2'b01: Update when difference is greater than 3 tFS.
+
+2'b10: Update when difference is greater than 7 tFS.
+
+2'b11: Update when difference is greater than 15 tFS.
+
+upd_range_ext = 2'b01
+
+29:28 RW 0x0
+
+2'b00: Update when difference is greater than 5 tFS. 2'b01: Update when difference is greater than 9 tFS.
+
+2'b10: Update when difference is greater than 11 tFS.
+
+2'b11: Update when difference is greater than 13 tFS.
+
+upd_range_ext = 2'b10
+
+2'b00: Update when difference is greater than 17 tFS.
+
+2'b01: Update when difference is greater than 19 tFS.
+
+2'b10: Update when difference is greater than 21 tFS.
+
+2'b11: Update when difference is greater than 23 tFS.
+
+upd_range_ext = 2'b11
+
+2'b00: Update when difference is greater than 25 tFS.
+
+2'b01: Update when difference is greater than 27 tFS.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+808
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+2'b10: Update when difference is greater than 29 tFS.
+
+2'b11: Update when difference is greater than 31 tFS.
+
+ctrl_twpst
+
+27 RW 0x0
+
+Write postamble length control. Vendor specific option 1'b0: 0.5tCK
+
+1'b1: 1.5tCK
+
+ctrl_dfdqs
+
+26 RW 0x1
+
+DQS I/O Receiver mode setting 1'b0: Single-ended DQS (io_dqs_se = 2'b11)
+
+1'b1: Differential DQS (io_dqs_se =2'b00)
+
+ctrl_ddr_mode
+
+25:24 RW 0x0
+
+2'b00: LPDDR4 2'b10: LPDDR5
+
+Others: Reserved
+
+ctrl_fnc_fb
+
+FNC Feedback mode setting
+
+23:21 RW 0x0
+
+3'b000: FNC Feedback disable 3'b010: External FNC Feedback mode
+
+3'b011: Internal FNC Feedback mode
+
+Others: Reserved
+
+dvfs_gate_upd_mode
+
+Gate information update mode for DVFS pause.
+
+1'b0: Gate delay information will be restored to the initial training
+
+20 RW 0x0
+
+result whenever DVFS pause occurs.
+
+1'b1: Gate delay information will not be restore to the initial
+
+training result if DVFS pause occurs without changing dvfs_mode
+
+and clock frequency in order to make DLL relock.
+
+wdqs_oen_mode
+
+Write DQS drive state control mode.
+
+19 RW 0x0
+
+1'b0: DQS will be driven except for the read duration. ds_io_pd
+
+should be set to 1.
+
+1'b1: DQS will be driven only for write duration.
+
+write_se_dqs
+
+Single ended mode enable for write DQS. It can be enabled to
+
+reduce power consumption.
+
+18 RW 0x0
+
+1'b0: Single ended mode is disabled for Write DQS.
+
+1'b1: Single ended mode is enabled for Write DQS.
+
+Caution: write_se_ck should be enabled using write_se_dqs in
+
+LPDDR4.
+
+write_se_ck
+
+Single ended mode enable for CK. It can be enabled to reduce
+
+power consumption.
+
+1'b0: Single ended mode is disabled for CK.
+
+17 RW 0x0
+
+1'b1: Single ended mode is enabled for CK.
+
+Caution: write_se_dqs should be enabled using write_se_ck in
+
+LPDDR4.
+
+Caution: write_se_wck should be enabled using write_se_ck in
+
+LPDDR5.
+
+ctrl_pd_width
+
+PD (io_dqs_pd, io_dq_pd, io_dm_pd) signal width control.
+
+16 RW 0x0
+
+1'b0: Same width with READ (io_pdqs_read, io_ndqs_read,
+
+io_dq_read, io_dm_read)
+
+1'b1: Longer than READ
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+809
+
+RK3576 TRM (Part 2)
+
+Bit 15 14 13:8 7 6 5:0
+
+Attr Reset Value
+
+Description
+
+ctrl_twpre
+
+Write preamble length control. Refer to DRAM spec for write
+
+RW 0x0
+
+preamble definition.
+
+1'b0: 2 tCK for higher speeds
+
+1'b1: 1 tCK for lower speeds
+
+ctrl_otf_bl
+
+RW 0x1
+
+On-the-fly BL enable 1'b0: On-the-fly BL is disabled.
+
+1'b1: On-the-fly BL is enabled.
+
+ctrl_bstlen
+
+Fixed Burst Length (BL). This field is ignored when ctrl_otf_bl is
+
+RW 0x10
+
+1'b1. 6'h10: BL = 16
+
+6'h20: BL = 32
+
+Others: Reserved
+
+RW 0x0
+
+ctrl_ckdis Deprecated.
+
+ctrl_cmosrcv
+
+This field controls the input mode of I/O.
+
+1'b0: Differential receiver mode for high speed operation
+
+RW 0x0
+
+(io_dqs_cmosrcv = 2'b0, io_dm_cmosrcv = 2'b0, io_dq_cmosrcv = 16'h0000)
+
+1'b1: CMOS receiver mode for low speed operation (under
+
+400MHz) (io_dqs_cmosrcv = 2'b11, io_dm_cmosrcv = 2'b11,
+
+io_dq_cmosrcv = 16'hffff)
+
+RW 0x11
+
+ctrl_rdlat_rank0 Read latency (RL) for rank0
+
+DDRPHY_CAL_CON0
+
+Address: Operational Base + offset (0x0004)
+
+Bit Attr Reset Value
+
+Description
+
+cs_default
+
+31:30 RW 0x1
+
+Default dfi_wrdata_cs setting. This field will set the default value for internally generated dfi_wrdata_cs, which will be used when
+
+wr_per_rank_en is disabled.
+
+wr_per_rank_en
+
+Per-rank write DQ/DM DLL control enable. If this field is enabled,
+
+write training should be done for both rank0 and rank1 and
+
+dfi_wrdata_cs should be properly controlled by the memory
+
+29 RW 0x1
+
+controller. If this field is disabled, dfi_wrdata_cs will be controlled
+
+internally by PHY, and it will be fixed to the default chip select,
+
+which is specified in cs_default.
+
+1'b1: Write DQ DLL code will be controlled per rank.
+
+1'b0: Write DQ DLL code will be fixed for rank-to-rank write.
+
+rd_per_rank_en
+
+Per-rank read DQS/DQ/DM DLL control enable. If this field is
+
+28 RW 0x1
+
+enabled, Read training should be done for both rank0 and rank1. 1'b1: Read DQS/DQ/DM DLL code will be controlled per rank.
+
+1'b0: Read DQS/DQ/DM DLL code will be fixed for rank-to-rank
+
+read.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+810
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+gate_rdchk_en
+
+Gate training read check enable control signal. If this is enabled,
+
+PHY will check if the read data from DRAM caused by MPC-RD DQ
+
+27 RW 0x1
+
+Calibration from the memory controller is correct or not while
+
+finding the read DQS location during gate training.
+
+1'b1: Read check is enabled during gate training.
+
+1'b0: Read check is disabled during gate training.
+
+dvfs_wr_train_en
+
+DVFS Write training enable. If enabled, write training initiation
+
+with dfi_lvl_periodic=0 will be interpreted as DVFS write training.
+
+During the initial training, dvfs_wr_train_en should be 0.
+
+26 RW 0x0
+
+1'b1: DVFS write training enabled. Training logic will find
+
+tDQS2DQ variation. The start point is determined by
+
+dvfs_wr_start_adj. Training will finish when the valid data widow
+
+edge is found.
+
+1'b0: DVFS write training disabled.
+
+avg_window_size
+
+Average window size for DLL lock value average.
+
+2'b00: Lock value will be sampled 32 times and averaged
+
+25:24 RW 0x0
+
+(Default).
+
+2'b01: Lock value will be sampled 16 times and averaged.
+
+2'b10: Lock value will be sampled 8 times and averaged.
+
+2'b11: Lock value will be sampled 64 times and averaged.
+
+freq_offset_en
+
+Frequency offset calculation enable. When enabled, PHY
+
+calculates the required offset based on the frequency information
+
+to get more margins at the lower frequencies. It should be set to
+
+23 RW 0x1
+
+1'b0 if DLL is off because the frequency compensation offset will
+
+be calculated using the current DLL lock value. Frequency offset
+
+will be applied to write DQ/DM and read DQS.
+
+1'b1: Enable frequency offset calculation.
+
+1'b0: Disable frequency offset calculation.
+
+cal_vtc_en
+
+VT compensation enable. DLL delay is updated depending on the
+
+latest master DLL lock value whenever "dfi_ctrlupd_req" or
+
+22 RW 0x0
+
+"dfi_phyupd_req" is issued if cal_vtc_en=1. It compensates On-
+
+chip VT variation.
+
+1'b1: VT compensation enabled.
+
+1'b0: VT compensation disabled.
+
+21 RW 0x0
+
+ca_swap_mode_dis CA swap disable for LPDDR4 HW CAL CBT mode
+
+wck_vtc_en
+
+VT compensation enable for WCK. DLL delay is updated
+
+depending on the latest master DLL lock value whenever
+
+20 RW 0x1
+
+"dfi_ctrlupd_req" or "dfi_phyupd_req" is issued if wck_vtc_en=1. It compensates On-chip VT variation.
+
+1'b1: VT compensation enabled.
+
+1'b0: VT compensation disabled.
+
+cal_vtc_en should be 1 for use wck_vtc_en = 1.
+
+19 RO 0x0
+
+reserved
+
+rdtrn_dbi_cal_en
+
+18 RW 0x1
+
+DBI enable for LPDDR4/5 read training. 1'b0: DBI is not calibrated during read training.
+
+1'b1: DBI is calibrated during read training.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+811
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+wrtrn_dbi_cal_en
+
+DBI enable for LPDDR4/5 write training. Set to 0 if data mask,
+
+17 RW 0x1
+
+write DBI and read DBI are all disabled at DRAM. Otherwise, it should be set to 1.
+
+1'b0: DBI is not calibrated during write training.
+
+1'b1: DBI is calibrated during write training.
+
+16 RO 0x0
+
+wrlvl_resp Response after write levelling is done.
+
+LP5_16bank_mode
+
+LP5 16bank mode
+
+15 RW 0x0
+
+1'b1: 16bank mode
+
+1'b0: 4bg/4bank mode
+
+8 bank mode don't care about this field.
+
+ctrl_upd_interval
+
+DLL update interval. DLL update is done periodically with interval
+
+defined by ctrl_upd_interval when ctrl_upd_time = 2'b10.
+
+14:13 RW 0x0
+
+2'b00: 2us
+
+2'b01: 4us
+
+2'b10: 6us
+
+2'b11: 8us
+
+lock_sample_condition
+
+Lock value sampling condition setting for lock value averaging.
+
+12:11 RW 0x0
+
+Applied when lock_averge_en = 1. 2'b00: Lock value will be sampled if ctrl_flock = 1.
+
+2'b01: Lock value will be sampled if ctrl_clock = 1.
+
+2'b10: Lock value will be sampled if ctrl_locked = 1.
+
+wrtrn_dqs_edge_en
+
+DQS edge enable for initial write training. This field can be
+
+changed to find the effect of duty cycle error on the initial write
+
+training result for debug purpose. For normal operation, use the
+
+default value (2'b11).
+
+10:9 RW 0x3
+
+2'b11: DQ/DM captured at the rising and falling edge of DQS will be used for the initial write training (Default).
+
+2'b01: DQ/DM captured only at the rising edge of DQS will be
+
+used for the initial write training.
+
+2'b10: DQ/DM captured only at the falling edge of DQS will be
+
+used for the initial write training.
+
+2'b00: Do not use.
+
+wrlvl_start
+
+8
+
+RW 0x0
+
+Write levelling start. It can be enabled when wrlvl_mode = 1. It should be disabled after write levelling response (wrlvl_resp) is
+
+asserted.
+
+rdlvl_dqs_edge_en
+
+DQS edge enable for initial read training. This field can be
+
+changed to find the effect of duty cycle error on the initial read
+
+training result for debug purpose. For normal operation, use the
+
+default value (2'b11).
+
+7:6 RW 0x3
+
+2'b11: DQ/DM captured at the rising and falling edge of DQS will be used for the initial read training (Default).
+
+2'b01: DQ/DM captured only at the rising edge of DQS will be
+
+used for the initial read training.
+
+2'b10: DQ/DM captured only at the falling edge of DQS will be
+
+used for the initial read training.
+
+2'b00: Do not use.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+812
+
+RK3576 TRM (Part 2)
+
+Bit 5 4 3 2 1 0
+
+Attr Reset Value
+
+Description
+
+wr_cal_mode
+
+RW 0x0
+
+If it is enabled, PHY will use "SDLL Code" which is calculated during write training. If disabled, PHY will use "SDLL Code" which
+
+is calculated from master DLL (T/4).
+
+lock_average_en
+
+Lock value average enable. If enabled, moving average will be
+
+applied to DLL lock value to remove lock value deviation due to
+
+RW 0x0
+
+power noise.
+
+1'b0: DLL lock value will not be averaged (Default).
+
+1'b1: DLL lock value will be sampled and averaged. The number
+
+of lock value that will be averaged is defined in avg_window_size.
+
+rd_cal_mode
+
+RW 0x0
+
+When rd_cal_mode=1, PHY will use "SDLL Code" which is calculated during read training. If disabled, PHY will use "SDLL
+
+Code" which is calculated from master DLL (T/4).
+
+ca_cal_mode
+
+CBT mode enable.
+
+RW 0x0
+
+For LPDDR4, if ca_cal_mode = 1 and cbt_vref_dqs_en[N] = 1, DQS/DQ/DM pad for Byte N will be set to driver mode.
+
+For LPDDR5, if ca_cal_mode = 1 and cbt_bit_dq_en[n] = 0, DQ
+
+pad for bit n will be set to driver mode.
+
+gate_cal_mode
+
+Gate training mode enable. If Gate training is used, this value
+
+RW 0x0
+
+should be high during operation. 1'b1: PHY will apply Gate cycle/offset result (GT_VWMC*_cs0/cs1
+
+and GT_CYC*_cs0/cs1) from Gate training to gate signal.
+
+1'b0: PHY will apply ctrl_shiftc to gate signal.
+
+wrlvl_mode
+
+Write levelling Mode Enable. If write levelling is configured
+
+RW 0x0
+
+(wrlvl_mode = 1), DQ/DM pad will be set to receiver mode
+
+(io_dq_en=16'hFFFF, io_dm_en=2'b11) and DQS pad will be set
+
+to driver mode (io_pdqs_en=2'b00, io_ndqs_en=2'b00).
+
+DDRPHY_CAL_CON1
+
+Address: Operational Base + offset (0x0008)
+
+Bit Attr Reset Value
+
+Description
+
+wrtrn_pass_adj
+
+This field controls how many times Write should be operated well
+
+to determine if it goes into VWP (Valid Window Period) or not. For
+
+write training, PHY decides that DQ is in the valid window if data
+
+check passes *4 times consecutively. The valid range is 0x1~0xF
+
+4'h1: PHY decides that DQ is in the valid window if data check
+
+passes 4 time.
+
+31:28 RW 0x2
+
+4'h2: PHY decides that DQ is in the valid window if data check passes 8 times consecutively.
+
+4'h3: PHY decides that DQ is in the valid window if data check
+
+passes 12 times consecutively.
+
+......
+
+4'hE: PHY decides that DQ is in the valid window if data check
+
+passes 56 times consecutively.
+
+4'hF: PHY decides that DQ is in the valid window if data check
+
+passes 60 times consecutively.
+
+27 RW 0x0
+
+dfi_error_en Dfi error enable
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+813
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+rdlvl_incr_adj
+
+Initial training step size (default: 7'h1, fine step delay). It should
+
+be smaller than 7'b0F. This is valid only for write/read DQ
+
+26:20 RW 0x01
+
+calibration, gate training and write levelling. [26:25]=2'b00: The step value will be "rdlvl_incr_adj[4:0]".
+
+[26:25]=2'b01: The step value will be "T/4".
+
+[26:25]=2'b10: The step value will be "T/8".
+
+[26:25]=2'b11: The step value will be "T/64".
+
+rdlvl_pass_adj
+
+This field controls how many times "Read" should be operated
+
+well to determine if it goes into VWP (Valid Window Period) or
+
+not.
+
+4'h1: PHY decides that DQS is in the valid window if data check
+
+passes 2 time.
+
+4'h2: PHY decides that DQS is in the valid window if data check
+
+passes 4 times consecutively.
+
+4'h3: PHY decides that DQS is in the valid window if data check
+
+19:16 RW 0x4
+
+passes 6 times consecutively.
+
+4'h4: PHY decides that DQS is in the valid window if data check
+
+passes 8 times consecutively.
+
+4'h5: PHY decides that DQS is in the valid window if data check
+
+passes 10 times consecutively.
+
+4'h6: PHY decides that DQS is in the valid window if data check
+
+passes 12 times consecutively.
+
+4'h7: PHY decides that DQS is in the valid window if data check
+
+passes 14 times consecutively.
+
+Others: Do not use.
+
+ctrl_rpost_opt
+
+LPDDR5 read post-amble toggle option. Refer to read post-amble
+
+15:14 RW 0x0
+
+description in DRAM spec. 2'b00: Read post-amble = 0.5tWCK static.
+
+2'b01: Read post-amble = 2.5tWCK static.
+
+2'b10: Read post-amble = 4.5tWCK static.
+
+glvl_periodic_incr_adj
+
+Periodic (or short) gate training step size. It should be smaller
+
+than 7'h1F. Default value is 7'b1000000 (T/4).
+
+[13:12]=2'b00: The step value will be
+
+13:7 RW 0x40
+
+"glvl_periodic_incr_adj[4:0]".
+
+[13:12]=2'b01: The step value will be "T/2".
+
+[13:12]=2'b10: The step value will be "T/4" (default).
+
+[13:12]=2'b11: The step value will be "T/8".
+
+[13:7]=7'h00: The step value will be "T/16".
+
+rdlvl_periodic_incr_adj
+
+Periodic (or short) training step size. It decides the step value of
+
+delay line to increase during periodic read and write training. It
+
+should be smaller than 7'b0F. Default value is 7'h40 (T/32).
+
+6:0 RW 0x01
+
+[6:5]=2'b00: The step value will be
+
+"rdlvl_periodic_incr_adj[4:0]".
+
+[6:5]=2'b01: The step value will be "T/16".
+
+[6:5]=2'b10: The step value will be "T/32" (default).
+
+[6:5]=2'b11: The step value will be "T/64".
+
+DDRPHY_CAL_CON2 Address: Operational Base + offset (0x000C)
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+814
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+ctrl_rpre_opt
+
+Read pre-amble toggle option. Refer to read pre-amble
+
+description in DRAM spec.
+
+For LPDDR4:
+
+31 RW 0x0
+
+1'b1: Read pre-amble = 2nCK toggle
+
+1'b0: Read pre-amble = 2nCK static
+
+For LPDDR5:
+
+1'b1: Read pre-amble = 2tWCK static + 2tWCK toggle
+
+1'b0: Read pre-amble = 2tWCK static
+
+ctrl_rodt_disable
+
+Read ODT (On-Die-Termination) disable signal
+
+1'b1: Read ODT disabled. Drive ctrl_read_p* to 0. If using
+
+30 RW 0x1
+
+LPDDR4, ctrl_read_p* will be always 0 by enabling this field (io_pdqs_read, io_ndqs_read, io_dq_read, io_dm_read are low).
+
+1'b0: Read ODT enabled. Drive ctrl_read_p* normally
+
+(io_pdqs_read, io_ndqs_read, io_dq_read, io_dm_read are high
+
+only for read duration).
+
+ctrl_shgate
+
+This field controls the gate control signal
+
+1'b0: Gate signal length = "burst length / 2" + N (Apply when
+
+29 RW 0x0
+
+DQS Pull-Down is enabled. N is determined by ctrl_gateduradj.)
+
+1'b1: Gate signal length = "burst length / 2" ? 1
+
+For LPDDR4, MR1 should be programmed so that read pre-amble
+
+is 2nCK static and read post-amble is 0.5tCK when shgate is 1'b0.
+
+28 RW 0x0
+
+ctrl_gt_fine_disable Gate fine training enable for periodic gate training
+
+ctrl_gateduradj
+
+It adjusts the duration cycle of "ctrl_gate" on a clock cycle base.
+
+27:24 RW 0x2
+
+MSB (bit3) controls direction: 1'b1: Subtract duration
+
+1'b0: Add duration
+
+Bit[2:0] set duration value
+
+ctrl_gateadj
+
+It adjusts the enable time of "ctrl_gate" on a clock cycle base.
+
+The reference point is at the end of RL.
+
+MSB (bit3) controls direction:
+
+23:20 RW 0x0
+
+1'b1: Subtract delay 1'b0: Add delay
+
+Bit[2:0] set delay value. When gate training is enabled, it
+
+configures the start point of gate training. If gate training is not
+
+enabled, it will be used to manually control the position of
+
+ctrl_gate.
+
+ctrl_readduradj
+
+It adjusts the duration cycle of "ctrl_read" on a clock cycle base.
+
+"ctrl_read" is the read odt control signal within PHY.
+
+MSB (bit3) controls direction:
+
+19:16 RW 0x0
+
+1'b1: Subtract delay
+
+1'b0: Add delay
+
+Bit[2:0] set delay value. It determines the high duration of
+
+io_pdqs_read, io_ndqs_read, io_dq_read and io_dm_read if
+
+ctrl_rodt_disable is 0.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+815
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+ctrl_readadj
+
+It adjusts the enable time of "ctrl_read" on a clock cycle base.
+
+The reference point is at the end of RL.
+
+MSB (bit3) controls direction:
+
+15:12 RW 0x1
+
+1'b1: Subtract delay
+
+1'b0: Add delay
+
+Bit[2:0] set delay. It determines the start cycle of high duration
+
+of io_pdqs_read, io_ndqs_read, io_dq_read and io_dm_read if
+
+ctrl_rodt_disable is 0.
+
+ctrl_readduradj_ext
+
+Default value is 0. This field is used for extend control range of
+
+ctrl_readduradj value.
+
+11 RW 0x0
+
+ctrl_readduradj_ext = 1'b0 (default)
+
+=> Non Extended
+
+ctrl_readduradj_ext = 1'b1
+
+=> ctrl_readduradj[2:0] + 'h8
+
+ctrl_readadj_ext
+
+Default value is 0. This field is used for extend control range of
+
+ctrl_readadj value.
+
+10 RW 0x0
+
+ctrl_readadj_ext = 1'b0 (default)
+
+=> Non Extended
+
+ctrl_readadj_ext = 1'b1
+
+=> ctrl_readadj[2:0] + 'h8
+
+ctrl_maskdur_adj
+
+Single-ended NDQS input glitch masking duration adjustment
+
+9:8 RW 0x3
+
+during read ODT enable timing. 2'b11 (default): SE NDQS Glitch 3.5tCK masking
+
+2'b10: SE NDQS Glitch 4.5tCK masking
+
+2'b00: SE NDQS Glitch 5.5tCK masking
+
+7
+
+RW 0x0
+
+ctrl_long_gate_train_mode Gate training mode by long gate (shgate = 0)
+
+glvl_start_adj
+
+Gate training start point adjustment. This field adjusts the initial
+
+code provided to the gate delay line at the beginning of periodic
+
+gate training.
+
+[6:4]=3'b000: The start point code is -T from the first DQS rising
+
+edge.
+
+[6:4]=3'b001: The start point code is -7T/8 from the first DQS
+
+rising edge.
+
+[6:4]=3'b010: The start point code is -6T/8 from the first DQS
+
+6:4 RW 0x0
+
+rising edge. [6:4]=3'b011: The start point code is -5T/8 from the first DQS
+
+rising edge.
+
+[6:4]=3'b100: The start point code is -4T/8 from the first DQS
+
+rising edge.
+
+[6:4]=3'b101: The start point code is -3T/8 from the first DQS
+
+rising edge.
+
+[6:4]=3'b110: The start point code is -2T/8 from the first DQS
+
+rising edge.
+
+[6:4]=3'b111: The start point code is -T/8 from the first DQS
+
+rising edge.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+816
+
+RK3576 TRM (Part 2)
+
+Bit 3 2
+1:0
+
+Attr Reset Value
+
+Description
+
+ctrl_gateduradj_ext
+
+Default value is 0. This field is used for extend control range of
+
+ctrl_gateduradj value.
+
+RW 0x0
+
+ctrl_gateduradj_ext = 1'b0 (default)
+
+=> Non Extended
+
+ctrl_gateduradj_ext = 1'b1
+
+=> ctrl_gateduradj[2:0] + 'h8
+
+ctrl_gateadj_ext
+
+Default value is 0. This field is used for extend control range of
+
+ctrl_gateadj value.
+
+RW 0x0
+
+ctrl_gateadj_ext = 1'b0 (default)
+
+=> Non Extended
+
+ctrl_gateadj_ext = 1'b1
+
+=> ctrl_gateadj[2:0] + 'h8
+
+ctrl_read_width
+
+The default is 1'b0. We strongly recommend that it should have
+
+one more idle cycle between read and write because the variation
+
+of data arrival time during read can be greater than 1 cycle. If it
+
+is 1'b1, the package and board should be carefully optimized with
+
+RW 0x0
+
+a short length and it should be used at the low frequency.
+
+1'b0: Termination on (io_pdqs_read, io_ndqs_read, io_dq_read,
+
+io_dm_read are driven high) period is (BL/2+1.5) cycle (Default)
+
+1'b1: Termination on period (io_pdqs_read, io_ndqs_read,
+
+io_dq_read, io_dm_read are driven high is (BL/2+1) cycle (Not
+
+recommended)
+
+DDRPHY_CAL_CON3
+
+Address: Operational Base + offset (0x0010)
+
+Bit Attr Reset Value
+
+Description
+
+vt_phyupd_req_cycle
+
+31:26 RW 0x3f
+
+For debug purpose. For phy-initated update mode, it controls the number of cycle during which cs_phyupd FSM stays at
+
+ST_UPD_WAIT state.
+
+dvfs_wait_cycle
+
+25:22 RW 0x1
+
+For debug purpose. It controls the number of cycle during which
+
+cs_phydvfs FSM stays at ST_DVFS_A state.
+
+vt_mcupd_req_cycle
+
+21:16 RW 0x3f
+
+For debug purpose. For mc-initiated update mode, it controls the number of cycle during which cs_phyupd FSM stays at
+
+ST_UPD_WAIT state.
+
+upd_ack_cycle
+
+15:12 RW 0x9
+
+For debug purpose. It controls the number of cycle during which
+
+cs_phyupd FSM stays at ST_UPD_ACK state.
+
+auto_dqs_clean
+
+Enable Auto-DQS-Clean mode. Auto-DQS-Clean needs following
+
+conditions.
+
+11 RW 0x0
+
+1. Gate training off 2. Use differential IO with VSSQ-Term.
+
+3. ctrl_shgate=1'b0, ctrl_gateduradj=4'b0001
+
+4. tDQSCK (min) =< 2*tCK: ctrl_gateadj = 4'b1001
+
+tDQSCK (min) > 2*tCK: ctrl_gateadj = 4'b0000
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+817
+
+RK3576 TRM (Part 2)
+
+Bit 10 9
+8
+7 6
+
+Attr Reset Value
+
+Description
+
+gt_sw_mode
+
+Gate training register RW mode control for debug purpose. pcl_pd
+
+should be set to 1'b0 to enable write mode.
+
+RW 0x0
+
+1'b1: CAL_GT_CS0_VWMC0, CAL_GT_CS1_VWMC0, CAL_GT_CS0_CYC, CAL_GT_CS1_CYC are writable when
+
+dvfs_mode = 2'b00 and ctrl_shgate = 1'b1.
+
+1'b0: CAL_GT_CS0_VWMC0, CAL_GT_CS1_VWMC0,
+
+CAL_GT_CS0_CYC, CAL_GT_CS1_CYC are read-only.
+
+wr_sw_mode
+
+SW write training code update control. This field will be enabled
+
+when restoring the previous write training results. pcl_pd should
+
+be set to 1'b0 to enable write mode.
+
+1'b1: SW_WR_DESKEWC_CS0_CON*,
+
+RW 0x0
+
+SW_WR_DESKEWC_CS1_CON*, SW_WR_DESKEWL_CS0_CON*, SW_WR_DESKEWL_CS1_CON* will be written to internal write
+
+training code.
+
+1'b0: SW_WR_DESKEWC_CS0_CON*,
+
+SW_WR_DESKEWC_CS1_CON*, SW_WR_DESKEWL_CS0_CON*,
+
+SW_WR_DESKEWL_CS1_CON* will not be written to internal
+
+write training code.
+
+rd_sw_mode
+
+SW read training code update control. This field will be enabled
+
+when restoring the previous read training registers. pcl_pd should
+
+be set to 1'b0 to enable write mode.
+
+1'b1: SW_RD_DESKEW_CENTER_CS0_CON_*,
+
+SW_RD_DESKEW_LEFT_CS0_CON_*,
+
+SW_RD_DQS_VWMC_CS0_CON0,
+
+SW_RD_DQS_VWML_CS0_CON0,
+
+SW_RD_DESKEW_CENTER_CS1_CON_*,
+
+SW_RD_DESKEW_LEFT_CS1_CON_*,
+
+RW 0x0
+
+SW_RD_DQS_VWMC_CS1_CON0, SW_RD_DQS_VWML_CS1_CON0 will be written to internal Read
+
+training code.
+
+1'b0: SW_RD_DESKEW_CENTER_CS0_CON_*,
+
+SW_RD_DESKEW_LEFT_CS0_CON_*,
+
+SW_RD_DQS_VWMC_CS0_CON0,
+
+SW_RD_DQS_VWML_CS0_CON0,
+
+SW_RD_DESKEW_CENTER_CS1_CON_*,
+
+SW_RD_DESKEW_LEFT_CS1_CON_*,
+
+SW_RD_DQS_VWMC_CS1_CON0,
+
+SW_RD_DQS_VWML_CS1_CON0 will not be written to internal
+
+read training code.
+
+wrlvl_sw_mode
+
+ctrl_wrlvl_code register RW mode control for debug purpose.
+
+RW 0x0
+
+pcl_pd should be set to 1'b0 to enable write mode. 1'b1: ctrl_wrlvl1_code and ctrl_wrlvl0_code are writable when
+
+wrlvl_mode is set and pcfg_mode[2] is high.
+
+1'b0: ctrl_wrlvl1_code and ctrl_wrlvl0_code are read-only.
+
+prbs_sw_mode
+
+SW PRBS training code update control. This field will be enabled
+
+when restoring the previous PRBS training resisters. pcl_pd
+
+RW 0x0
+
+should be set to 1'b0 to enable write mode. 1'b1: PRBS_CON4 and PRBS_CON5 will be written to internal
+
+PRBS training code.
+
+1'b0: PRBS_CON4 and PRBS_CON5 are not written to internal
+
+PRBS training code.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+818
+
+RK3576 TRM (Part 2)
+
+Bit 5:4 3
+2:0
+
+Attr Reset Value
+
+Description
+
+min_locktime_adj
+
+MDLL lock check timing control after DLL relock start during DVFS
+
+pause.
+
+RW 0x0
+
+2'b00: Default.
+
+2'b01: MDLL lock check timing will be delayed by 1 DFI cycle.
+
+2'b10: MDLL lock check timing will be delayed by 2 DFI cycle.
+
+2'b11: MDLL lock check timing will be delayed by 3 DFI cycle.
+
+RO 0x0
+
+reserved
+
+pcfg_mode
+
+PHY configuration register mode control signal to read the
+
+information at each data slice for debug. This field should be set
+
+to 'h0 for normal operation.
+
+[2] = 1: Read mode enable for debug. VT compensated DLL
+
+codes will be read out for RD_DESKEW_CENTER_CS0_CON_DM,
+
+RD_DESKEW_CENTER_CS0_CON*,
+
+RD_DESKEW_CENTER_CS1_CON_DM,
+
+RD_DESKEW_CENTER_CS1_CON*, WR_DESKEWC_CS0_CON*,
+
+WR_DESKEWC_CS1_CON*, DM_DESKEWC_CS0_CON*,
+
+RW 0x0
+
+DM_DESKEWC_CS1_CON*.
+
+The original DLL code will be read out for WR_LVL_CON*.
+
+[2] = 0: Read mode disabled.
+
+VT compensated DLL codes will be read out for WR_LVL_CON*.
+
+The original DLL codes will be read out for
+
+RD_DESKEW_CENTER_CS0_CON_DM,
+
+RD_DESKEW_CENTER_CS0_CON*,
+
+RD_DESKEW_CENTER_CS1_CON_DM,
+
+RD_DESKEW_CENTER_CS1_CON*, WR_DESKEWC_CS0_CON*,
+
+WR_DESKEWC_CS1_CON*, DM_DESKEWC_CS0_CON*,
+
+DM_DESKEWC_CS1_CON*.
+
+DDRPHY_CAL_CON4
+
+Address: Operational Base + offset (0x0014)
+
+Bit Attr Reset Value
+
+Description
+
+LP4_High_density_mode
+
+LPDDR4 high density mode
+
+31 RW 0x0
+
+1'b1: Support R17/R18 for ACT2
+
+1'b0: Support 2'b11 command for ACT2
+
+This field should be disabled in LPDDR5.
+
+glvl_periodic_fine_incr_adj
+
+Periodic gate training step size at fine mode. It should be smaller
+
+than 7'h1F. Default value is 7'b0000000 (T/16).
+
+[30:29]=2'b00: The step value will be
+
+30:24 RW 0x00
+
+"glvl_periodic_fine_incr_adj[4:0]".
+
+[30:29]=2'b01: The step value will be "T/32".
+
+[30:29]=2'b10: The step value will be "T/4".
+
+[30:29]=2'b11: The step value will be "T/8".
+
+[30:24]=7'h00: The step value will be "T/16" (default).
+
+glitch_removal_length
+
+23 RW 0x1
+
+This field is used for control postamble glitch removal duration. 1'b0: 1.5tCK
+
+1'b1: 1tCK
+
+glitch_removal_en
+
+This field is used for postamble glitch removal enable during
+
+22 RW 0x0
+
+Auto-DQS-Clean mode.
+
+1'b0: Glitch removal disable
+
+1'b1: Glitch removal enable
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+819
+
+RK3576 TRM (Part 2)
+
+Bit Attr Reset Value
+
+Description
+
+lock_avg_cnt_number
+
+21:16 RW 0x03
+
+This field determines the lock value update counter maximum
+
+number for moving averaging.
+
+WCK_MASK
+
+This field is option for WCK OFF timing on rank2rank operation
+
+15 RW 0x1
+
+1'b1: WCK off timing on rank2rank operation can be allowed as optimized parameter by SMC
+
+1'b0: WCK off timing on rank2rank operation can be allowed
+
+same as WCK off timing on same rank operation.
+
+cmdfifo_wl_ext
+
+14 RW 0x0
+
+This field determines command FIFO write latency extension mode for auto dqs clean and ONLY use at LPDDR5.
+
+If this field set to 1, PHY can support RL = 21.
+
+upd_range_ext
+
+Default value is 0. This field is used for extend control range of
+
+ctrl_upd_range value.
+
+upd_range_ext = 2'b00 (default)
+
+2'b00: Update when difference is greater than 0 tFS.
+
+2'b01: Update when difference is greater than 3 tFS.
+
+2'b10: Update when difference is greater than 7 tFS.
+
+2'b11: Update when difference is greater than 15 tFS.
+
+upd_range_ext = 2'b01
+
+2'b00: Update when difference is greater than 5 tFS.
+
+2'b01: Update when difference is greater than 9 tFS.
+
+13:12 RW 0x0
+
+2'b10: Update when difference is greater than 11 tFS.
+
+2'b11: Update when difference is greater than 13 tFS.
+
+upd_range_ext = 2'b10
+
+2'b00: Update when difference is greater than 17 tFS.
+
+2'b01: Update when difference is greater than 19 tFS.
+
+2'b10: Update when difference is greater than 21 tFS.
+
+2'b11: Update when difference is greater than 23 tFS.
+
+upd_range_ext = 2'b11
+
+2'b00: Update when difference is greater than 25 tFS.
+
+2'b01: Update when difference is greater than 27 tFS.
+
+2'b10: Update when difference is greater than 29 tFS.
+
+2'b11: Update when difference is greater than 31 tFS.
+
+wrtrn_multi_pattern
+
+Multi-pattern enable during the initial write training.
+
+11 RW 0x0
+
+1'b0: One BL16 pattern will be asserted at each DLL code during write training.
+
+1'b1: Four BL16 patterns will be asserted at each DLL code during
+
+write training.
+
+num_repeat
+
+The number of DRAM access at each DLL code during the initial
+
+10:6 RW 0x01
+
+read or write training. PHY will collect pass/fail decision for num_repeat times DRAM access at each DLL code. For initial
+
+write training, 4*num_repeat DRAM access will occur at each DLL
+
+code if wrtrn_multi_pattern is 1. Don't use 0x0.
+
+dvfs_wrtrn_mode
+
+DVFS write training mode select.
+
+1'b0: DVFS write training starts dvfs_wr_start_adj steps earlier
+
+5
+
+RW 0x1
+
+from DQ right side edge. Training code will be increased to find the correct DQ/DBI location.
+
+1'b1: DVFS write training starts at DQ right side edge determined
+
+at the initial write training. Training code will be increased or
+
+decreased to find the correct DQ/DBI location.
+
+Copyright © 2024 Rockchip Electronics Co., Ltd.
+
+820
+
+
