@@ -1,1 +1,5 @@
 u-boot/
+
+# Rockchip proprietary TRM documents (not redistributable)
+docs/trm/*.docx
+docs/trm/*.pdf
