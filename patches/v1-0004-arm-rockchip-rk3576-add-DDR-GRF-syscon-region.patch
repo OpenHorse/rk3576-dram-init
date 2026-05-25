@@ -1,0 +1,54 @@
+From 39c8d9ac0df26d3380629a97f412d406d7b0a012 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Sun, 24 May 2026 23:19:17 +0200
+Subject: [RFC PATCH v1 04/14] arm: rockchip: rk3576: add DDR GRF syscon region
+
+The DDR GRF (at 0x26012000) controls PHY clock gating, LPDDR5 CS
+toggle, and the dfi_init_complete mux.  The DRAM init driver needs
+it as a syscon.
+
+Add ROCKCHIP_SYSCON_DDRGRF to the shared enum in clock.h and register
+"rockchip,rk3576-ddr-grf" in syscon_rk3576.c.  Also add the missing
+#include <syscon.h> and fix a trailing-space inconsistency in the
+pmu1-grf entry.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ arch/arm/include/asm/arch-rockchip/clock.h    | 1 +
+ arch/arm/mach-rockchip/rk3576/syscon_rk3576.c | 4 +++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/include/asm/arch-rockchip/clock.h b/arch/arm/include/asm/arch-rockchip/clock.h
+index 95b08bfd046..a6b399da4ff 100644
+--- a/arch/arm/include/asm/arch-rockchip/clock.h
++++ b/arch/arm/include/asm/arch-rockchip/clock.h
+@@ -39,6 +39,7 @@ enum {
+ 	ROCKCHIP_SYSCON_PIPE_PHY2_GRF,
+ 	ROCKCHIP_SYSCON_VOP_GRF,
+ 	ROCKCHIP_SYSCON_VO_GRF,
++	ROCKCHIP_SYSCON_DDRGRF,
+ };
+ 
+ /* Standard Rockchip clock numbers */
+diff --git a/arch/arm/mach-rockchip/rk3576/syscon_rk3576.c b/arch/arm/mach-rockchip/rk3576/syscon_rk3576.c
+index 0dbf8f8d9c0..64934afeeaf 100644
+--- a/arch/arm/mach-rockchip/rk3576/syscon_rk3576.c
++++ b/arch/arm/mach-rockchip/rk3576/syscon_rk3576.c
+@@ -4,11 +4,13 @@
+  */
+ 
+ #include <dm.h>
++#include <syscon.h>
+ #include <asm/arch-rockchip/clock.h>
+ 
+ static const struct udevice_id rk3576_syscon_ids[] = {
+ 	{ .compatible = "rockchip,rk3576-sys-grf", .data = ROCKCHIP_SYSCON_GRF },
+-	{ .compatible = "rockchip,rk3576-pmu1-grf",  .data = ROCKCHIP_SYSCON_PMUGRF },
++	{ .compatible = "rockchip,rk3576-pmu1-grf", .data = ROCKCHIP_SYSCON_PMUGRF },
++	{ .compatible = "rockchip,rk3576-ddr-grf",  .data = ROCKCHIP_SYSCON_DDRGRF },
+ 	{ }
+ };
+ 
+-- 
+2.45.1.windows.1
+

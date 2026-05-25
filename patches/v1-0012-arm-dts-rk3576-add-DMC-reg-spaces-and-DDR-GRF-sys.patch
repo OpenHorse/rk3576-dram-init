@@ -1,0 +1,57 @@
+From 4e4edc4ee69888a21e900a4bd4ec381fcb50a4af Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:59:25 +0200
+Subject: [RFC PATCH v1 12/14] arm: dts: rk3576: add DMC reg spaces and DDR GRF
+ syscon node
+
+Two additions needed for BLOB-free TPL DRAM init:
+
+1. DMC reg/reg-names (W13): add the four MMIO regions that the DRAM
+   driver maps at probe time:
+     - ddrctl0  0x28000000 / 16 MB  (uMCTL2 ch0, TRM Part 1)
+     - ddrctl1  0x29000000 / 16 MB  (uMCTL2 ch1)
+     - ddrphy0  0x2a020000 / 64 KB  (combo PHY ch0)
+     - ddrphy1  0x2a030000 / 64 KB  (combo PHY ch1)
+
+2. DDR GRF syscon node (W14): the DDR Global Register File at
+   0x26012000 is not present in the upstream kernel DTS (it is an
+   RK3576-specific block controlling PHY clock gating, LPDDR5 CS
+   toggle and the dfi_init_complete mux).  Add it as a u-boot-only
+   syscon node with bootph-all so it is available in TPL.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ arch/arm/dts/rk3576-u-boot.dtsi | 15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/dts/rk3576-u-boot.dtsi b/arch/arm/dts/rk3576-u-boot.dtsi
+index 018c9cc8d69..881a594ce5c 100644
+--- a/arch/arm/dts/rk3576-u-boot.dtsi
++++ b/arch/arm/dts/rk3576-u-boot.dtsi
+@@ -15,9 +15,22 @@
+ 		u-boot,spl-boot-order = "same-as-spl", &sdmmc, &sdhci;
+ 	};
+ 
+-	dmc {
++	/* DDR Global Register File — TRM Part 1, Table 1-1; no upstream node */
++	ddr_grf: syscon@26012000 {
++		compatible = "rockchip,rk3576-ddr-grf", "syscon";
++		reg = <0x0 0x26012000 0x0 0x2000>;
++		bootph-all;
++	};
++
++	dmc: dmc {
+ 		compatible = "rockchip,rk3576-dmc";
+ 		bootph-all;
++		/* TRM Part 1, Table 1-1 */
++		reg = <0x0 0x28000000 0x0 0x1000000>,	/* DDRCTL0 (uMCTL2 ch0) */
++		      <0x0 0x29000000 0x0 0x1000000>,	/* DDRCTL1 (uMCTL2 ch1) */
++		      <0x0 0x2a020000 0x0 0x10000>,	/* DDRPHY0 */
++		      <0x0 0x2a030000 0x0 0x10000>;	/* DDRPHY1 */
++		reg-names = "ddrctl0", "ddrctl1", "ddrphy0", "ddrphy1";
+ 	};
+ };
+ 
+-- 
+2.45.1.windows.1
+

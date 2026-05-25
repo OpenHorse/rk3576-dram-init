@@ -1,0 +1,80 @@
+From d8c9b9068c02ff7e531ec750332295838051bbce Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Sun, 24 May 2026 23:18:51 +0200
+Subject: [RFC PATCH v1 02/14] clk: rockchip: rk3576: add OF_PLATDATA support
+ for TPL
+
+TPL uses CONFIG_OF_PLATDATA (dtoc), which requires a driver-specific
+platdata struct and a .plat_auto size in U_BOOT_DRIVER.  Without
+this the driver fails to probe in TPL context because dtoc generates
+struct dtd_rockchip_rk3576_cru but the driver does not declare it.
+
+Add:
+  - #include <dt-structs.h> for the dtd_rockchip_rk3576_cru type
+  - struct rk3576_clk_plat wrapping dtd_rockchip_rk3576_cru
+  - .plat_auto = sizeof(struct rk3576_clk_plat) in U_BOOT_DRIVER
+
+Guard clk_set_defaults() with !CONFIG_IS_ENABLED(OF_PLATDATA): it
+reads the DT at runtime which is unavailable in OF_PLATDATA builds,
+and the assigned-clock properties are handled by dtoc at build time.
+
+Pattern mirrors clk_rk3568.c from the RK3568 RFC series.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ drivers/clk/rockchip/clk_rk3576.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/clk/rockchip/clk_rk3576.c b/drivers/clk/rockchip/clk_rk3576.c
+index 1026af27ca1..8f99a440a3e 100644
+--- a/drivers/clk/rockchip/clk_rk3576.c
++++ b/drivers/clk/rockchip/clk_rk3576.c
+@@ -7,6 +7,7 @@
+ #include <bitfield.h>
+ #include <clk-uclass.h>
+ #include <dm.h>
++#include <dt-structs.h>
+ #include <errno.h>
+ #include <syscon.h>
+ #include <asm/arch-rockchip/cru_rk3576.h>
+@@ -17,6 +18,12 @@
+ #include <dt-bindings/clock/rockchip,rk3576-cru.h>
+ #include <linux/delay.h>
+ 
++#if CONFIG_IS_ENABLED(OF_PLATDATA)
++struct rk3576_clk_plat {
++	struct dtd_rockchip_rk3576_cru dtd;
++};
++#endif
++
+ #define DIV_TO_RATE(input_rate, div)	((input_rate) / ((div) + 1))
+ 
+ static struct rockchip_pll_rate_table rk3576_24m_pll_rates[] = {
+@@ -2447,12 +2454,14 @@ static int rk3576_clk_probe(struct udevice *dev)
+ 
+ 	rk3576_clk_init(priv);
+ 
++#if !CONFIG_IS_ENABLED(OF_PLATDATA)
+ 	/* Process 'assigned-{clocks/clock-parents/clock-rates}' properties */
+ 	ret = clk_set_defaults(dev, 1);
+ 	if (ret)
+ 		debug("%s clk_set_defaults failed %d\n", __func__, ret);
+ 	else
+ 		priv->sync_kernel = true;
++#endif
+ 
+ 	return 0;
+ }
+@@ -2506,6 +2515,9 @@ U_BOOT_DRIVER(rockchip_rk3576_cru) = {
+ 	.id		= UCLASS_CLK,
+ 	.of_match	= rk3576_clk_ids,
+ 	.priv_auto	= sizeof(struct rk3576_clk_priv),
++#if CONFIG_IS_ENABLED(OF_PLATDATA)
++	.plat_auto	= sizeof(struct rk3576_clk_plat),
++#endif
+ 	.of_to_plat	= rk3576_clk_ofdata_to_platdata,
+ 	.ops		= &rk3576_clk_ops,
+ 	.bind		= rk3576_clk_bind,
+-- 
+2.45.1.windows.1
+
