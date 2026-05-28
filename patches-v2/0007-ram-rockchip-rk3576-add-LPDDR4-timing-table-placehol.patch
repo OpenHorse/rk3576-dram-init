@@ -1,0 +1,211 @@
+From 5f40743dd8f095a1cfc667f64130c106a241df37 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:59:02 +0200
+Subject: [PATCH 07/10] ram: rockchip: rk3576: add LPDDR4 timing table
+ placeholder (1560 MHz)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add sdram-rk3576-lpddr4-detect-1560.inc: a compileable timing table
+for LPDDR4 at CK = 1560 MHz (data rate ≈ LPDDR4X-3120).
+
+All timing register values are TRM reset defaults and are NOT correct
+for 1560 MHz operation.  The file exists so the driver compiles with
+CONFIG_RAM_ROCKCHIP_LPDDR4=y.  Hardware bring-up will fail until the
+timing values are replaced with values derived from:
+  - JEDEC JESD209-4D LPDDR4/4X timing for the target speed grade
+  - Synopsys uMCTL2 SRS field encoding rules
+  - The actual DRAM part number and its timing datasheet
+
+Correctly set:
+  - mstr0 = 0x01080020 (BIT(5)=lpddr4 | 1 rank | BL16 | full BW)
+  - cap_info: 4 GB LPDDR4, 2 channels × 2 GB, 2^16 rows
+
+LPDDR4 is a secondary target; primary is LPDDR5 (W9).
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ .../sdram-rk3576-lpddr4-detect-1560.inc       | 170 ++++++++++++++++++
+ 1 file changed, 170 insertions(+)
+ create mode 100644 drivers/ram/rockchip/sdram-rk3576-lpddr4-detect-1560.inc
+
+diff --git a/drivers/ram/rockchip/sdram-rk3576-lpddr4-detect-1560.inc b/drivers/ram/rockchip/sdram-rk3576-lpddr4-detect-1560.inc
+new file mode 100644
+index 00000000000..3f01a49edf0
+--- /dev/null
++++ b/drivers/ram/rockchip/sdram-rk3576-lpddr4-detect-1560.inc
+@@ -0,0 +1,170 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * RK3576 LPDDR4 timing table — CK = 1560 MHz (data rate ≈ LPDDR4X-3120).
++ *
++ * PLACEHOLDER — timing register values below are TRM reset defaults
++ * and are NOT correct for 1560 MHz LPDDR4 operation.  Hardware bring-up
++ * will fail until these are replaced with values calculated from:
++ *
++ *   1. JEDEC JESD209-4D LPDDR4/4X timing parameters for the target speed
++ *   2. Synopsys uMCTL2 Software Requirements Specification (SRS) field
++ *      encoding rules
++ *   3. The actual DRAM part number and its timing datasheet
++ *
++ * Specifically wrong at 1560 MHz:
++ *   dramset1tmg0.t_ras_min  TRM reset = 15 cyc (9.6 ns); JEDEC min = 42 ns
++ *   dramset1tmg0.wr2pre     needs WL + BL/2 + tWR calculation for LP4
++ *   dfitmg0/1               need tDFI_WRDATA, tDFI_RDDATA_EN for this PHY
++ *   initmr0                 LP4 MR1/MR2 for 1560 MHz RL/WL
++ *   rfshset1tmg0.t_rfc_min  needs LP4 die density (8 Gbit ≈ 210 ns)
++ *
++ * W8 work item.  LPDDR4 is a secondary target; primary is LPDDR5 (W9).
++ * This file exists so the driver compiles with CONFIG_RAM_ROCKCHIP_LPDDR4=y.
++ */
++
++/*
++ * Shared per-frequency timing block (all four FREQ banks identical
++ * placeholder values; real table would differentiate by operating point).
++ */
++#define LP4_1560_FREQ_TMG						\
++{									\
++	/*								\
++	 * SDRAM timing — TRM reset values (sdram_pctl_rk3576.h).	\
++	 * Replace every field before hardware testing (see header).	\
++	 */								\
++	.dramset1tmg0  = 0x0F101B0F, /* t_ras_min/max, t_faw, wr2pre */\
++	.dramset1tmg1  = 0x00080414,					\
++	.dramset1tmg2  = 0x0305060D,					\
++	.dramset1tmg3  = 0x00040404,					\
++	.dramset1tmg4  = 0x05040405,					\
++	.dramset1tmg5  = 0x05050403,					\
++	.dramset1tmg6  = 0x00000005,					\
++	.dramset1tmg7  = 0x00000000,					\
++	.dramset1tmg8  = 0x00004405,					\
++	.dramset1tmg9  = 0x0004040D,					\
++	.dramset1tmg12 = 0x00020000,					\
++	.dramset1tmg13 = 0x1C200004,					\
++	.dramset1tmg14 = 0x000800A0,					\
++	.dramset1tmg23 = 0x00000000,					\
++	.dramset1tmg24 = 0x000F0F0F,					\
++	.dramset1tmg25 = 0x00000000,					\
++	.dramset1tmg30 = 0x00000000,					\
++	/*								\
++	 * SDRAM initialization MR values — LP4 MR1/MR2/MR3/MR11.	\
++	 * TODO: encode correct RL/WL/DQ-VREF for 1560 MHz.		\
++	 * INITMR0[7:0]=MR2, INITMR0[23:16]=MR1 (uMCTL2 SRS).		\
++	 */								\
++	.initmr0 = 0x00000510, /* TRM reset */				\
++	.initmr1 = 0x00000000,						\
++	.initmr2 = 0x00000000,						\
++	.initmr3 = 0x00000000,						\
++	/* DFI timing — TRM reset values */				\
++	.dfitmg0    = 0x07020002,					\
++	.dfitmg1    = 0x00000404,					\
++	.dfitmg2    = 0x00000202,					\
++	.dfitmg4    = 0x00000000,					\
++	.dfitmg5    = 0x00000000,					\
++	.dfilptmg0  = 0x00000000,					\
++	.dfilptmg1  = 0x00000700,					\
++	.dfiupdtmg0 = 0x00400003,					\
++	.dfiupdtmg1 = 0x00010001,					\
++	.dfimsgtmg0 = 0x00000004,					\
++	/*								\
++	 * Refresh timing — TODO: t_rfc_min for LP4 8 Gbit die		\
++	 * (tRFCab ≈ 380 ns at 1560 MHz ≈ 594 cycles).			\
++	 */								\
++	.rfshset1tmg0 = 0x02100062,					\
++	.rfshset1tmg1 = 0x0000008C,					\
++	.rfshset1tmg2 = 0x8C8C0000,					\
++	.rfshset1tmg4 = 0x00000000,					\
++	/* ZQ timing — TRM reset values */				\
++	.zqset1tmg0 = 0x00400200,					\
++	.zqset1tmg1 = 0x02000100,					\
++	/* Scheduler / power — TRM reset values */			\
++	.perfhpr1 = 0x0F000001,						\
++	.perflpr1 = 0x0F00007F,						\
++	.perfwr1  = 0x0F00007F,						\
++	.ranktmg0 = 0x00000606,						\
++	.ranktmg1 = 0x00000F0F,						\
++	.pwrtmg   = 0x00400010,						\
++}
++
++{
++	.ch = {
++		[0] = {
++			.cap_info = {
++				/*
++				 * Typical 4 GB LPDDR4: 2 channels × 2 GB,
++				 * each channel two x16 LP4 dies = x32 bus.
++				 * 2 GB / 8 banks / 1024 cols / 4 B = 2^16 rows.
++				 * Verify rank, row, col from actual chip datasheet.
++				 */
++				.rank              = 1,
++				.col               = 10,
++				.bk                = 3,
++				.bw                = 2,
++				.dbw               = 1,
++				.row_3_4           = 0,
++				.cs0_row           = 16,
++				.cs1_row           = 16,
++				.cs0_high16bit_row = 0,
++				.cs1_high16bit_row = 0,
++				.ddrconfig         = 0,
++			},
++		},
++		[1] = {
++			.cap_info = {
++				.rank              = 1,
++				.col               = 10,
++				.bk                = 3,
++				.bw                = 2,
++				.dbw               = 1,
++				.row_3_4           = 0,
++				.cs0_row           = 16,
++				.cs1_row           = 16,
++				.cs0_high16bit_row = 0,
++				.cs1_high16bit_row = 0,
++				.ddrconfig         = 0,
++			},
++		},
++	},
++	.base = {
++		.ddr_freq     = 1560,	/* CK MHz; data rate = 2 × 1560 = 3120 MT/s */
++		.dramtype     = LPDDR4,
++		.num_channels = 2,
++		.stride       = 0,
++		.odt          = 1,
++	},
++	.freq = {
++		[0] = LP4_1560_FREQ_TMG,
++		[1] = LP4_1560_FREQ_TMG,
++		[2] = LP4_1560_FREQ_TMG,
++		[3] = LP4_1560_FREQ_TMG,
++	},
++	.ctl = {
++		/*
++		 * MSTR0: LPDDR4 (BIT(5)), 1 rank (bits[25:24]=0x1),
++		 * BL16 (bits[19:16]=0x8), full bus width (bits[13:12]=0x0).
++		 * TRM Part 2 p.632 field descriptions.
++		 */
++		.mstr0      = 0x01080020,
++		/* Remaining fields: TRM reset values (sdram_pctl_rk3576.h) */
++		.rankctl    = 0x0000000F,
++		.dbictl     = 0x00000001,
++		.odtmap     = 0x00002211,
++		.inittmg0   = 0x0002004E,
++		.inittmg1   = 0x00000000,
++		.rfshmod0   = 0x00000000,
++		.sched0     = 0x8001201C,
++		.sched1     = 0x00002000,
++		.sched3     = 0x04040208,
++		.sched4     = 0x08400810,
++		.dfilpcfg0  = 0x00100000,
++		.dfiupd0    = 0x00008000,
++		.dfiphymstr = 0x80000001,
++		.zqctl0     = 0x00000000,
++		.zqctl1     = 0x00000000,
++	},
++},
++
++#undef LP4_1560_FREQ_TMG
+-- 
+2.45.1.windows.1
+

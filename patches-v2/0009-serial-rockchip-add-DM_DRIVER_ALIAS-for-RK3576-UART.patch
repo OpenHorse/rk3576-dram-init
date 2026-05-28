@@ -1,0 +1,30 @@
+From d10c38e2526e417cb04d563dbf92c5454b103836 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:59:33 +0200
+Subject: [PATCH 09/10] serial: rockchip: add DM_DRIVER_ALIAS for RK3576 UART
+
+The RK3576 UART is compatible with the shared rockchip_uart driver.
+Add the DM_DRIVER_ALIAS so that dtoc (OF_PLATDATA) maps the
+"rockchip,rk3576-uart" compatible string to the correct driver during
+TPL builds.
+
+Without this alias, OF_PLATDATA fails to bind the debug UART in TPL
+and early console output is lost.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ drivers/serial/serial_rockchip.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/serial/serial_rockchip.c b/drivers/serial/serial_rockchip.c
+index 8a15173f238..1f4b6cadc1e 100644
+--- a/drivers/serial/serial_rockchip.c
++++ b/drivers/serial/serial_rockchip.c
+@@ -54,3 +54,4 @@ DM_DRIVER_ALIAS(rockchip_uart, rockchip_rk3188_uart)
+ DM_DRIVER_ALIAS(rockchip_uart, rockchip_rk3288_uart)
+ DM_DRIVER_ALIAS(rockchip_uart, rockchip_rk3328_uart)
+ DM_DRIVER_ALIAS(rockchip_uart, rockchip_rk3368_uart)
++DM_DRIVER_ALIAS(rockchip_uart, rockchip_rk3576_uart)
+-- 
+2.45.1.windows.1
+

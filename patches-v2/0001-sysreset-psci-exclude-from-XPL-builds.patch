@@ -1,0 +1,35 @@
+From 9b30da461672f17bdfab2ca5072fb89a2c3e03ee Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Sun, 24 May 2026 23:17:58 +0200
+Subject: [PATCH 01/10] sysreset: psci: exclude from XPL builds
+
+sysreset_psci.o pulls in PSCI firmware calls which are not available
+in XPL (TPL/SPL) context where EL3 is not yet initialised.  Guard the
+object with ifndef CONFIG_XPL_BUILD, mirroring the pattern already
+used by other sysreset drivers.
+
+Required so that CONFIG_SYSRESET_PSCI can be selected in full U-Boot
+while TPL for RK3576 (which sets CONFIG_XPL_BUILD) still links cleanly.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ drivers/sysreset/Makefile | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/sysreset/Makefile b/drivers/sysreset/Makefile
+index b5b99235b6e..a5e50f17909 100644
+--- a/drivers/sysreset/Makefile
++++ b/drivers/sysreset/Makefile
+@@ -16,7 +16,9 @@ obj-$(CONFIG_SYSRESET_MPC83XX) += sysreset_mpc83xx.o
+ obj-$(CONFIG_SYSRESET_MICROBLAZE) += sysreset_microblaze.o
+ obj-$(CONFIG_SYSRESET_OCTEON) += sysreset_octeon.o
+ obj-$(CONFIG_$(PHASE_)SYSRESET_PALMAS) += sysreset_palmas.o
++ifndef CONFIG_XPL_BUILD
+ obj-$(CONFIG_SYSRESET_PSCI) += sysreset_psci.o
++endif
+ obj-$(CONFIG_SYSRESET_SBI) += sysreset_sbi.o
+ obj-$(CONFIG_SYSRESET_SOCFPGA) += sysreset_socfpga.o
+ obj-$(CONFIG_SYSRESET_SOCFPGA_SOC64) += sysreset_socfpga_soc64.o
+-- 
+2.45.1.windows.1
+
