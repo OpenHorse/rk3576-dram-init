@@ -1,0 +1,404 @@
+From 3ab081f485e6f5997d25ba86af2442eed2f1d602 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:58:30 +0200
+Subject: [PATCH 05/10] ram: rockchip: add RK3576 DDRPHY register definitions
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add sdram_phy_rk3576.h with the full register layout for the Synopsys
+LPDDR4/4X/5 combo PHY on RK3576.  This is a different PHY generation
+from RK3568 and cannot share sdram_phy_px30.h.
+
+Covers ~123 defines across:
+  - GNR (general): ctrl_ddr_mode, WDQS OEN mode
+  - CAL: offset-R/W/D/C/O, gate training, WR-levelling, CA deskew
+  - LP: scheduler enable, WCK enable, DQS drive-off (LPDDR5)
+  - MDLL: dll_on, start, force, clkm_cg_en_sw, locked status
+  - ZQ: zq_clk_div_en, zq_manual_str, zq_done (TRM pp.860-862)
+  - DVFS / CBT / SCHD_TRAIN FSM and command registers
+  - WCK2CKSYNC: wck_mode_mask for LPDDR5 WCK policy
+  - CLKMODE: phy_mode (LP4 1:2:2 / LP5 1:1:4), phy_clk_2x
+
+All bit positions verified against TRM Part 2 §7.4.6 (pp.808-980).
+No firmware required: training uses the built-in hardware engine
+(SCHD_TRAIN_CON0[0]=phy_train_en, [1]=phy_train_done).
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ .../asm/arch-rockchip/sdram_phy_rk3576.h      | 363 ++++++++++++++++++
+ 1 file changed, 363 insertions(+)
+ create mode 100644 arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h
+
+diff --git a/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h b/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h
+new file mode 100644
+index 00000000000..f6221a5434f
+--- /dev/null
++++ b/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h
+@@ -0,0 +1,363 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * RK3576 LPDDR4/4X/5 combo PHY register definitions.
++ *
++ * The RK3576 uses a Synopsys DesignWare LPDDR4/4X/5 combo PHY.
++ * This PHY is a different generation from the px30/rk3568 PHY and
++ * has a hardware training engine — no Synopsys training firmware needed.
++ * (TRM Part 2 §7.6.x confirmed firmware-free training via phy_train_en.)
++ *
++ * Operational bases (TRM Part 2 §7.4.4):
++ *   DDRPHY0  0x2A020000
++ *   DDRPHY1  0x2A030000
++ *
++ * All offsets are relative to the DDRPHY operational base.
++ * TRM Part 2 §7.4.5 "Registers Summary For DDRPHY" (pp.790-810).
++ */
++
++#ifndef _ASM_ARCH_SDRAM_PHY_RK3576_H
++#define _ASM_ARCH_SDRAM_PHY_RK3576_H
++
++#ifndef __ASSEMBLY__
++#include <linux/bitops.h>
++#endif
++
++/* -----------------------------------------------------------------------
++ * Core calibration and control registers (TRM p.790)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_GNR_CON0			0x0000	/* reset: 0x44005011 */
++#define DDRPHY_CAL_CON0			0x0004	/* reset: 0x789606C0 */
++#define DDRPHY_CAL_CON1			0x0008	/* reset: 0x20142001 */
++#define DDRPHY_CAL_CON2			0x000C	/* reset: 0x42001300 */
++#define DDRPHY_CAL_CON3			0x0010	/* reset: 0xFC7F9000 */
++#define DDRPHY_CAL_CON4			0x0014	/* reset: 0x0083806F */
++#define DDRPHY_LP_CON0			0x0018	/* reset: 0x000C4403 */
++#define DDRPHY_GATE_CON0		0x001C	/* reset: 0x03003003 */
++
++/* -----------------------------------------------------------------------
++ * Read/write DQ and gate offset/shift registers (TRM p.790)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_OFFSETR_CON0		0x0020	/* reset: 0x00000000 */
++#define DDRPHY_OFFSETW_CON0		0x0030	/* reset: 0x00000000 */
++#define DDRPHY_OFFSET_DQ_CON0		0x003C	/* reset: 0x00000000 */
++#define DDRPHY_OFFSETC_CON0		0x0040	/* reset: 0x00000000 */
++#define DDRPHY_SHIFTC_CON0		0x004C	/* reset: 0x00000000 */
++#define DDRPHY_OFFSETD_CON0		0x0050	/* reset: 0x00000000 */
++#define DDRPHY_OFFSETO_CON0		0x0058	/* reset: 0x00000000 */
++
++/* -----------------------------------------------------------------------
++ * Write levelling (TRM p.790)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_WR_LVL_CON0		0x006C	/* reset: 0x00000000 */
++#define DDRPHY_WR_LVL_CON1		0x0070	/* reset: 0x01E80473 */
++#define DDRPHY_WR_LVL_CON2		0x0074	/* reset: 0x40465580 */
++#define DDRPHY_WR_LVL_CON3		0x0078	/* reset: 0x00000B00 */
++
++/* -----------------------------------------------------------------------
++ * CA de-skew (TRM p.790)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_CA_DESKEW_CON0		0x007C	/* reset: 0x00000000 */
++#define DDRPHY_CA_DESKEW_CON1		0x0080	/* reset: 0x00000000 */
++#define DDRPHY_CA_DESKEW_CON2		0x0084	/* reset: 0x00000000 */
++#define DDRPHY_CA_DESKEW_CON3		0x0088	/* reset: 0x00000000 */
++#define DDRPHY_CA_DESKEW_CON4		0x008C	/* reset: 0x00000000 */
++#define DDRPHY_CA_DESKEW_CON5		0x0090	/* reset: 0x00000000 */
++#define DDRPHY_CA_DESKEW_CON6		0x0094	/* reset: 0x00000000 */
++
++/* -----------------------------------------------------------------------
++ * Write/read calibration pattern registers (TRM p.790-791)
++ * CAL_WR_PATTERN_CON0-4:  BL1-BL8 / DM pattern (BL16 burst)
++ * CAL_WR_PATTERN_CON5-19: BL9-BL16 / DM pattern continuation
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_CAL_WR_PATTERN_CON0	0x0098	/* reset: 0x00FF00FF */
++#define DDRPHY_CAL_WR_PATTERN_CON1	0x009C	/* reset: 0x00FF00FF */
++#define DDRPHY_CAL_WR_PATTERN_CON2	0x00A0	/* reset: 0x00FF00FF */
++#define DDRPHY_CAL_WR_PATTERN_CON3	0x00A4	/* reset: 0x00FF00FF */
++#define DDRPHY_CAL_WR_PATTERN_CON4	0x00A8	/* reset: 0x00005555 */
++#define DDRPHY_CAL_RD_PATTERN_CON0	0x00AC	/* reset: 0x55555A3C */
++
++/* Extended write pattern: BL9-BL16 (starting offset extracted from TRM p.800) */
++#define DDRPHY_CAL_WR_PATTERN_CON5	0x093C
++#define DDRPHY_CAL_WR_PATTERN_CON6	0x0940
++#define DDRPHY_CAL_WR_PATTERN_CON7	0x0944
++#define DDRPHY_CAL_WR_PATTERN_CON8	0x0948
++#define DDRPHY_CAL_WR_PATTERN_CON9	0x094C
++#define DDRPHY_CAL_WR_PATTERN_CON10	0x0950
++#define DDRPHY_CAL_WR_PATTERN_CON11	0x0954
++#define DDRPHY_CAL_WR_PATTERN_CON12	0x0958
++#define DDRPHY_CAL_WR_PATTERN_CON13	0x095C
++#define DDRPHY_CAL_WR_PATTERN_CON14	0x0960
++#define DDRPHY_CAL_WR_PATTERN_CON15	0x0964
++#define DDRPHY_CAL_WR_PATTERN_CON16	0x0968
++#define DDRPHY_CAL_WR_PATTERN_CON17	0x096C
++#define DDRPHY_CAL_WR_PATTERN_CON18	0x0970
++#define DDRPHY_CAL_WR_PATTERN_CON19	0x0974
++
++/* -----------------------------------------------------------------------
++ * MDLL control (TRM p.791)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_MDLL_CON0		0x00B0	/* reset: 0x2000017E */
++#define DDRPHY_MDLL_CON1		0x00B4	/* reset: 0x00200100 */
++#define DDRPHY_MDLL_CON2		0x0AFC	/* reset: (see TRM) */
++
++/* -----------------------------------------------------------------------
++ * DVFS control registers (TRM p.791)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_DVFS_CON			0x00B8	/* reset: 0x00002640 */
++#define DDRPHY_DVFS0_CON0		0x00BC	/* reset: 0x64080C06 */
++#define DDRPHY_DVFS1_CON0		0x00C0	/* reset: 0x64080C06 */
++#define DDRPHY_DVFS0_CON1		0x00C4	/* reset: 0x30800000 */
++#define DDRPHY_DVFS1_CON1		0x00C8	/* reset: 0x30800000 */
++#define DDRPHY_DVFS0_CON2		0x00CC	/* reset: 0x60062001 */
++#define DDRPHY_DVFS1_CON2		0x00D0	/* reset: 0x60062001 */
++#define DDRPHY_DVFS0_CON3		0x00D4	/* reset: 0x0003FFFF */
++#define DDRPHY_DVFS1_CON3		0x00D8	/* reset: 0x0003FFFF */
++#define DDRPHY_DVFS0_CON4		0x00DC	/* reset: 0x00243F3F */
++#define DDRPHY_DVFS1_CON4		0x00E0	/* reset: 0x00243F3F */
++#define DDRPHY_DVFS0_CON5		0x0934
++#define DDRPHY_DVFS1_CON5		0x0938
++#define DDRPHY_DVFS_UPD_CON0		0x0164	/* reset: 0x003F3F3F */
++#define DDRPHY_DVFS_UPD_CON1		0x0168	/* reset: 0x003F3F3F */
++
++/* -----------------------------------------------------------------------
++ * Training status/result registers (TRM p.791)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_CAL_WRLVL_STAT		0x00E4	/* reset: 0x00000000 */
++#define DDRPHY_CAL_FAIL_STAT0		0x00E8	/* reset: 0x00000000 */
++#define DDRPHY_CAL_FAIL_STAT1		0x00EC	/* reset: 0x00000000 */
++#define DDRPHY_CAL_GT_CS0_VWMC0		0x00F0	/* reset: 0x00000000 */
++#define DDRPHY_CAL_GT_CS0_CYC		0x00FC	/* reset: 0x00000000 */
++#define DDRPHY_CAL_RD_VWMC0		0x0100	/* reset: 0x00000000 */
++#define DDRPHY_CAL_RD_VWML0		0x0110	/* reset: 0x00000000 */
++#define DDRPHY_CAL_RD_VWMR0		0x0120	/* reset: 0x00000000 */
++#define DDRPHY_CAL_WR_VWMC0		0x0130	/* reset: 0x00000000 */
++#define DDRPHY_CAL_WR_VWML0		0x0140	/* reset: 0x00000000 */
++#define DDRPHY_CAL_WR_VWMR0		0x0150	/* reset: 0x00000000 */
++#define DDRPHY_CAL_CON5			0x0160	/* reset: 0x00000000 */
++
++/* -----------------------------------------------------------------------
++ * ZQ calibration (TRM p.792-793)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_ZQ_CON0			0x03C8	/* reset: 0xFF807404 */
++#define DDRPHY_ZQ_CON1			0x03CC	/* reset: 0x00140000 */
++#define DDRPHY_ZQ_CON2			0x03D0	/* reset: 0x001E0002 */
++#define DDRPHY_ZQ_CON3			0x03D4	/* reset: 0x003F3F3F */
++#define DDRPHY_ZQ_CON5			0x03DC	/* reset: 0x073F0000 */
++#define DDRPHY_ZQ_CON6			0x03E0	/* reset: 0x00002121 */
++#define DDRPHY_ZQ_CON9			0x03EC	/* reset: 0x00001414 */
++#define DDRPHY_ZQ_CON12			0x03F8	/* reset: 0x00000707 */
++#define DDRPHY_TESTIRCV_CON0		0x0400	/* reset: 0x00080000 */
++
++/* -----------------------------------------------------------------------
++ * CBT (Command-Bus Training) registers (TRM p.793)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_CBT_CON0			0x0600
++#define DDRPHY_CBT_CON2			0x0608
++#define DDRPHY_CBT_CON3			0x060C
++#define DDRPHY_CBT_CON5			0x05F4
++#define DDRPHY_CBT_CMD			0x05FC
++#define DDRPHY_CBT_CAL_STAT0		0x0BC4
++
++/* -----------------------------------------------------------------------
++ * Training scheduler — core init and training control (TRM p.802)
++ * These are the primary registers for TPL hardware-assisted training.
++ * TRM §7.6.x: set phy_train_en=1, poll phy_train_done=1.
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRPHY_SCHD_CON0		0x0A20
++#define DDRPHY_SCHD_TRAIN_CON0		0x0A24
++#define DDRPHY_SCHD_TRAIN_CON1		0x0A28
++#define DDRPHY_SCHD_TIME_CON0		0x0A2C
++#define DDRPHY_SCHD_TIME_CON1		0x0A30
++#define DDRPHY_SCHD_TIME_CON2		0x0A34
++#define DDRPHY_SCHD_TIME_CON3		0x0A38
++
++/* DVFS scheduler timing (runtime DVFS, not needed for TPL init) */
++#define DDRPHY_DVFS0_SCHD_TIME_CON0	0x0A3C
++#define DDRPHY_DVFS0_SCHD_TIME_CON1	0x0A40
++#define DDRPHY_DVFS0_SCHD_TIME_CON2	0x0A44
++#define DDRPHY_DVFS0_SCHD_TIME_CON3	0x0A48
++#define DDRPHY_DVFS1_SCHD_TIME_CON0	0x0A4C
++#define DDRPHY_DVFS1_SCHD_TIME_CON1	0x0A50
++#define DDRPHY_DVFS1_SCHD_TIME_CON2	0x0A54
++#define DDRPHY_DVFS1_SCHD_TIME_CON3	0x0A58
++
++/* Direct command injection */
++#define DDRPHY_SCHD_DIRECT_CMD0		0x0A5C
++#define DDRPHY_SCHD_DIRECT_CMD1		0x0A60
++#define DDRPHY_SCHD_DIRECT_CMD2		0x0A64
++#define DDRPHY_SCHD_DIRECT_CMD3		0x0A68
++#define DDRPHY_SCHD_DIRECT_CMD4		0x0A6C
++#define DDRPHY_SCHD_CMD_CON0		0x0A70
++#define DDRPHY_SCHD_CMD_CON1		0x0A74
++#define DDRPHY_SCHD_CMD_CON2		0x0A78
++#define DDRPHY_OP_CODE_RDC		0x0A7C
++
++/* LPDDR4/5 MR operation buffers */
++#define DDRPHY_LP4_MR_OP0		0x0A80
++#define DDRPHY_LP4_MR_OP1		0x0A84
++#define DDRPHY_LP5_MR_OP0		0x0A88
++#define DDRPHY_LP5_MR_OP1		0x0A8C
++
++/* Training scheduler FSM and clock mode */
++#define DDRPHY_SCHD_FSM			0x0A90
++#define DDRPHY_CLKMODE_CON		0x0A94
++#define DDRPHY_CASWIZZLE_CON		0x0A98
++
++/* WCK2CK sync control — LPDDR5 only (TRM p.985) */
++#define DDRPHY_WCK2CKSYNC_CON0		0x0ADC	/* reset: 0x00000000 */
++#define DDRPHY_WCK2CKSYNC_CON1		0x0AE0	/* reset: 0x23340758 */
++
++/* -----------------------------------------------------------------------
++ * Register field macros — verified against TRM Part 2 §7.4.6 pp.808-980
++ * -----------------------------------------------------------------------
++ */
++
++/*
++ * DDRPHY_GNR_CON0 (reset 0x44005011)
++ * ctrl_ddr_mode [25:24]: 0=LPDDR4, 2=LPDDR5  (TRM p.808)
++ * wdqs_oen_mode   [19]: LPDDR5 must set; DQS driven only during writes
++ */
++#define GNR_CON0_CTRL_DDR_MODE_MASK	GENMASK(25, 24)
++#define GNR_CON0_DDR_MODE_LPDDR4	(0x0 << 24)
++#define GNR_CON0_DDR_MODE_LPDDR5	(0x2 << 24)
++#define GNR_CON0_WDQS_OEN_MODE		BIT(19)
++
++/*
++ * DDRPHY_LP_CON0 (reset 0x000C4403)
++ * ctrl_scheduler_en [6]: enable PHY scheduler clock (set for LP4 and LP5)
++ * ctrl_dqs_drv_off  [8]: DQS driver off — set for LPDDR5 when no ECC
++ * wck_enable        [9]: WCK enable — LPDDR5 only
++ * (TRM p.821)
++ */
++#define LP_CON0_CTRL_SCHEDULER_EN	BIT(6)
++#define LP_CON0_CTRL_DQS_DRV_OFF	BIT(8)
++#define LP_CON0_WCK_ENABLE		BIT(9)
++
++/*
++ * DDRPHY_MDLL_CON0 (reset 0x2000017E)
++ * ctrl_dll_on   [5]:     high = DLL on (keep high for normal op)
++ * ctrl_start    [6]:     0→1 pulse starts DLL locking
++ * ctrl_force  [18:8]:    force lock value when DLL is off (11-bit)
++ * clkm_cg_en_sw [23]:   freeze DLL lock value during freq change
++ * (TRM p.835)
++ */
++#define MDLL_CON0_CTRL_DLL_ON		BIT(5)
++#define MDLL_CON0_CTRL_START		BIT(6)
++#define MDLL_CON0_CTRL_FORCE_MASK	GENMASK(18, 8)
++#define MDLL_CON0_CTRL_FORCE(x)	((x) << 8)
++#define MDLL_CON0_CLKM_CG_EN_SW	BIT(23)
++/* ctrl_force value for low-frequency (<100 MHz) LPDDR5 init (TRM §7.6.3 step 24) */
++#define MDLL_CON0_CTRL_FORCE_LOW_FREQ	MDLL_CON0_CTRL_FORCE(0x2ef)
++
++/*
++ * DDRPHY_MDLL_CON1 (reset 0x00200100)
++ * ctrl_locked [18]: RO, DLL stable lock — poll until set after ctrl_start
++ * (TRM p.835)
++ */
++#define MDLL_CON1_CTRL_LOCKED		BIT(18)
++
++/*
++ * DDRPHY_CLKMODE_CON (reset 0x00000009)
++ * ctrl_phy_clk_2x [3]:   1=PHY 2x clock (always 1 in LP4/5)
++ * ctrl_phy_mode [2:0]:   clock ratio MC:CK:DQS/WCK (TRM p.980)
++ *   1 = LPDDR4 1:2:2
++ *   2 = LPDDR5 1:1:2 (CLK_DFI:CK:WCK)
++ *   4 = LPDDR5 1:1:4 (Flipper One operating mode)
++ */
++#define CLKMODE_CON_PHY_CLK_2X		BIT(3)
++#define CLKMODE_CON_PHY_MODE_MASK	GENMASK(2, 0)
++#define CLKMODE_CON_PHY_MODE_LPDDR4	1
++#define CLKMODE_CON_PHY_MODE_LP5_1_2	2
++#define CLKMODE_CON_PHY_MODE_LP5_1_4	4
++
++/*
++ * DDRPHY_CAL_CON0 (reset 0x789606C0)
++ * cal_vtc_en       [22]: VT compensation — enable after training
++ * dvfs_wr_train_en [26]: after initial training, re-interprets write training
++ * (TRM p.810)
++ */
++#define CAL_CON0_CAL_VTC_EN		BIT(22)
++#define CAL_CON0_DVFS_WR_TRAIN_EN	BIT(26)
++
++/*
++ * DDRPHY_CAL_CON5 (reset 0x00000000, offset 0x0160)
++ * wrtrn_cyc_mode [0]: 0=matched edge codes (>= 1 GHz), 1=unmatched
++ * wrtrn_cyc_en   [1]: cycle-based write training (enable for LPDDR4)
++ * (TRM p.850)
++ */
++#define CAL_CON5_WRTRN_CYC_MODE	BIT(0)
++#define CAL_CON5_WRTRN_CYC_EN		BIT(1)
++
++/*
++ * DDRPHY_OFFSETD_CON0 (reset 0x00000000, offset 0x0050)
++ * ctrl_resync [24]: toggle 0→1→0 to push DLL updates to slave DLLs
++ * upd_mode    [28]: 0=PHY-initiated update (dfi_phyupd_req)
++ * (TRM p.809 and §7.6.x DLL update procedure)
++ */
++#define OFFSETD_CON0_CTRL_RESYNC	BIT(24)
++#define OFFSETD_CON0_UPD_MODE		BIT(28)
++
++/*
++ * DDRPHY_SCHD_TRAIN_CON0 (reset 0x00000000, offset 0x0A24)
++ * phy_train_en   [0]:  RW — set to start hardware training engine
++ * phy_train_done [1]:  RO — poll until set, then clear phy_train_en
++ * phy_wrtrn_en   [5]:  enable write training
++ * phy_gttrn_en   [3]:  enable gate training
++ * (TRM p.965)
++ */
++#define TRAIN_CON0_PHY_TRAIN_EN		BIT(0)
++#define TRAIN_CON0_PHY_TRAIN_DONE	BIT(1)
++#define TRAIN_CON0_PHY_GTTRN_EN	BIT(3)
++#define TRAIN_CON0_PHY_WRTRN_EN	BIT(5)
++#define TRAIN_CON0_DVFS_WRTRN_EN_MASK	GENMASK(19, 18)
++#define TRAIN_CON0_PERIODIC_WRTRN_EN_MASK	GENMASK(23, 22)
++
++/*
++ * DDRPHY_ZQ_CON0 (reset 0xFF807404, offset 0x03C8)
++ * zq_clk_div_en [18]: enable ZQ clock divider before calibration (TRM p.860)
++ * zq_manual_str  [1]: 0→1 pulse starts manual ZQ calibration (TRM p.861)
++ * DDRPHY_ZQ_CON1 (reset 0x00140000, offset 0x03CC)
++ * zq_done        [0]: RO — high when calibration complete (TRM p.862)
++ */
++#define ZQ_CON0_ZQ_CLK_DIV_EN		BIT(18)
++#define ZQ_CON0_ZQ_MANUAL_STR		BIT(1)
++#define ZQ_CON1_ZQ_DONE			BIT(0)
++
++/*
++ * DDRPHY_WCK2CKSYNC_CON0 (reset 0x00000000, offset 0x0ADC)
++ * ctrl_WCK_MODE_APB [1:0]: WCK driving policy (TRM p.985)
++ *   0b00: PHY/MC normal (WCK always-on disabled), CAS_EN must be 1
++ *   0b01: MC WCK always-on mode, CAS_EN must be 0
++ * DDRPHY_SCHD_CMD_CON0 (reset ~0x1 at bit 0)
++ * CAS_EN_APB [0]: enable WCK2CK SYNC by scheduler (TRM p.976)
++ */
++#define WCK2CKSYNC_CON0_WCK_MODE_MASK	GENMASK(1, 0)
++#define WCK2CKSYNC_CON0_WCK_MODE_ALWAYS_ON	(0x1)
++#define SCHD_CMD_CON0_CAS_EN_APB	BIT(0)
++
++/* DDRPHY_CAL_FAIL_STAT0 — non-zero means training failed */
++#define CAL_FAIL_STAT0_ANY_FAIL		GENMASK(31, 0)
++
++#endif /* _ASM_ARCH_SDRAM_PHY_RK3576_H */
+-- 
+2.45.1.windows.1
+

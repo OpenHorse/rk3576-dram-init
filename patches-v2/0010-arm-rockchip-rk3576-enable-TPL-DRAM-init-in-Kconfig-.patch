@@ -1,0 +1,100 @@
+From f4b5521316eb74997ddbf699deb7cd5cd250e976 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Mon, 25 May 2026 01:59:48 +0200
+Subject: [PATCH 10/10] arm: rockchip: rk3576: enable TPL DRAM init in Kconfig
+ and defconfig
+
+Wire up the BLOB-free TPL DRAM init for RK3576:
+
+Kconfig (arch/arm/mach-rockchip/Kconfig):
+  Add 11 imply lines to ROCKCHIP_RK3576 to pull in the necessary
+  TPL subsystems: TPL_CLK, TPL_DM, TPL_OF_CONTROL, TPL_OF_PLATDATA,
+  TPL_RAM, TPL_REGMAP, TPL_ROCKCHIP_COMMON_BOARD, TPL_SERIAL,
+  TPL_SYSCON, TPL_TINY_MEMSET, ROCKCHIP_SDRAM_COMMON.
+
+Kconfig (arch/arm/mach-rockchip/rk3576/Kconfig):
+  Set TPL_TEXT_BASE = 0x3ff82000.  This is the start of the SRAM
+  region available for TPL between the boost stub (0x3ff81000) and
+  the SPL load address (0x3ffc0000), giving ~248 KB.
+
+Kconfig (drivers/ram/rockchip/Kconfig):
+  Add RAM_ROCKCHIP_LPDDR5 config option, required for RK3576 boards
+  with LPDDR5 memory.
+
+defconfig (configs/sige5-rk3576_defconfig):
+  - Disable ROCKCHIP_EXTERNAL_TPL (use our open-source TPL instead)
+  - Enable CONFIG_TPL=y
+  - Enable CONFIG_RAM_ROCKCHIP_LPDDR5=y for the Sige5 board
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ arch/arm/mach-rockchip/Kconfig        | 7 +++++++
+ arch/arm/mach-rockchip/rk3576/Kconfig | 3 +++
+ configs/sige5-rk3576_defconfig        | 3 +++
+ drivers/ram/rockchip/Kconfig          | 7 +++++++
+ 4 files changed, 20 insertions(+)
+
+diff --git a/arch/arm/mach-rockchip/Kconfig b/arch/arm/mach-rockchip/Kconfig
+index 108713488af..5eb1e142c1f 100644
+--- a/arch/arm/mach-rockchip/Kconfig
++++ b/arch/arm/mach-rockchip/Kconfig
+@@ -488,6 +488,13 @@ config ROCKCHIP_RK3576
+ 	imply SPL_REGMAP
+ 	imply SPL_SERIAL
+ 	imply SPL_SYSCON
++	imply ROCKCHIP_SDRAM_COMMON
++	imply TPL_DM
++	imply TPL_OF_CONTROL
++	imply TPL_RAM
++	imply TPL_ROCKCHIP_COMMON_BOARD
++	imply TPL_SERIAL
++	imply TPL_TINY_MEMSET
+ 	imply ENV_RELOC_GD_ENV_ADDR
+ 	imply SYSRESET
+ 	help
+diff --git a/arch/arm/mach-rockchip/rk3576/Kconfig b/arch/arm/mach-rockchip/rk3576/Kconfig
+index f347caf8904..58f1eb9fcd6 100644
+--- a/arch/arm/mach-rockchip/rk3576/Kconfig
++++ b/arch/arm/mach-rockchip/rk3576/Kconfig
+@@ -1,5 +1,8 @@
+ if ROCKCHIP_RK3576
+ 
++config TPL_TEXT_BASE
++	default 0x3ff82000
++
+ config TARGET_ROC_PC_RK3576
+ 	bool "Firefly ROC-RK3576-PC"
+ 	help
+diff --git a/configs/sige5-rk3576_defconfig b/configs/sige5-rk3576_defconfig
+index be46f63798b..38148ccab09 100644
+--- a/configs/sige5-rk3576_defconfig
++++ b/configs/sige5-rk3576_defconfig
+@@ -4,6 +4,9 @@ CONFIG_COUNTER_FREQUENCY=24000000
+ CONFIG_ARCH_ROCKCHIP=y
+ CONFIG_DEFAULT_DEVICE_TREE="rockchip/rk3576-armsom-sige5"
+ CONFIG_ROCKCHIP_RK3576=y
++# CONFIG_ROCKCHIP_EXTERNAL_TPL is not set
++CONFIG_TPL=y
++CONFIG_RAM_ROCKCHIP_LPDDR5=y
+ CONFIG_SYS_LOAD_ADDR=0x40c00800
+ CONFIG_DEBUG_UART_BASE=0x2AD40000
+ CONFIG_DEBUG_UART_CLOCK=24000000
+diff --git a/drivers/ram/rockchip/Kconfig b/drivers/ram/rockchip/Kconfig
+index d707d09c1c8..51740ed1d12 100644
+--- a/drivers/ram/rockchip/Kconfig
++++ b/drivers/ram/rockchip/Kconfig
+@@ -48,4 +48,11 @@ config RAM_ROCKCHIP_LPDDR4
+ 	  This enables LPDDR4 sdram code support for the platforms based
+ 	  on Rockchip SoCs.
+ 
++config RAM_ROCKCHIP_LPDDR5
++	bool "LPDDR5 support for Rockchip SoCs"
++	help
++	  This enables LPDDR5 sdram code support for the platforms based
++	  on Rockchip SoCs. Required for RK3576 boards with LPDDR5 memory
++	  (e.g. Flipper One with 8 GB LPDDR5).
++
+ endif # RAM_ROCKCHIP
+-- 
+2.45.1.windows.1
+

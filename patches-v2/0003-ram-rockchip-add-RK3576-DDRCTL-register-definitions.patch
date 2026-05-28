@@ -1,0 +1,342 @@
+From fc843559510f4dffe44e43943e09c9b73bf07e7d Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Sun, 24 May 2026 23:19:40 +0200
+Subject: [PATCH 03/10] ram: rockchip: add RK3576 DDRCTL register definitions
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add sdram_pctl_rk3576.h with the full uMCTL2 register layout for the
+RK3576 DDR subsystem.  The RK3576 uMCTL2 is a newer generation than
+the PX30/RK3568 variant and cannot share sdram_pctl_px30.h:
+
+  - Frequency-banked timing registers at 0x0/0x100000/0x200000/0x300000
+  - Global control/status at 0x10000+
+  - Multi-port registers at 0x20000+
+  - Address-map registers at 0x30000+
+
+Covers ~130 register offset defines (FREQ, global, port, addrmap
+sections) with TRM reset values in comments.  Field macros for
+MSTR0 (LPDDR4/5 mode, ranks, burst length, bus width), MRCTRL0
+(MR write protocol), DFIMISC, RFSHCTL0, and DFISTAT.
+
+TRM Part 2 §7.4.3 (pp.585-800).
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ .../asm/arch-rockchip/sdram_pctl_rk3576.h     | 303 ++++++++++++++++++
+ 1 file changed, 303 insertions(+)
+ create mode 100644 arch/arm/include/asm/arch-rockchip/sdram_pctl_rk3576.h
+
+diff --git a/arch/arm/include/asm/arch-rockchip/sdram_pctl_rk3576.h b/arch/arm/include/asm/arch-rockchip/sdram_pctl_rk3576.h
+new file mode 100644
+index 00000000000..cf4e9053bc1
+--- /dev/null
++++ b/arch/arm/include/asm/arch-rockchip/sdram_pctl_rk3576.h
+@@ -0,0 +1,303 @@
++/* SPDX-License-Identifier: GPL-2.0+ */
++/*
++ * RK3576 uMCTL2 DDRCTL register definitions.
++ *
++ * The RK3576 DDRCTL uses a non-standard address layout (TRM Part 2 §7.4.1):
++ *   0x000000–0x0FFFFF  FREQ0 per-frequency timing registers
++ *   0x100000–0x1FFFFF  FREQ1 per-frequency timing registers
++ *   0x200000–0x2FFFFF  FREQ2 per-frequency timing registers
++ *   0x300000–0x3FFFFF  FREQ3 per-frequency timing registers
++ *   0x010000–0x01FFFF  global/static controller registers
++ *   0x020000–0x024FFF  AXI port configuration (5 ports)
++ *   0x030000–0x037FFF  SDRAM address map registers
++ *
++ * Operational bases (TRM Part 2 Table 7-1):
++ *   DDRCTL0  0x28000000
++ *   DDRCTL1  0x29000000
++ *
++ * This layout is incompatible with sdram_pctl_px30.h; do not mix them.
++ */
++
++#ifndef _ASM_ARCH_SDRAM_PCTL_RK3576_H
++#define _ASM_ARCH_SDRAM_PCTL_RK3576_H
++
++#include <asm/arch-rockchip/sdram_common.h>
++
++#ifndef __ASSEMBLY__
++#include <linux/bitops.h>
++#endif
++
++/* Per-frequency bank base (TRM Part 2 §7.4.1) */
++#define DDRCTL_FREQ_BASE(n)		((u32)(n) * 0x100000)
++
++/* -----------------------------------------------------------------------
++ * FREQ-banked timing registers (offsets relative to DDRCTL_FREQ_BASE(n))
++ * TRM Part 2 §7.4.2 "Registers Summary For DDRCTL"
++ * -----------------------------------------------------------------------
++ */
++
++/* SDRAM timing set 1 (TRM p.591) */
++#define DDRCTL_DRAMSET1TMG0		0x0000	/* reset: 0x0F101B0F */
++#define DDRCTL_DRAMSET1TMG1		0x0004	/* reset: 0x00080414 */
++#define DDRCTL_DRAMSET1TMG2		0x0008	/* reset: 0x0305060D */
++#define DDRCTL_DRAMSET1TMG3		0x000C	/* reset: 0x00040404 */
++#define DDRCTL_DRAMSET1TMG4		0x0010	/* reset: 0x05040405 */
++#define DDRCTL_DRAMSET1TMG5		0x0014	/* reset: 0x05050403 */
++#define DDRCTL_DRAMSET1TMG6		0x0018	/* reset: 0x00000005 */
++#define DDRCTL_DRAMSET1TMG7		0x001C	/* reset: 0x00000000 */
++#define DDRCTL_DRAMSET1TMG8		0x0020	/* reset: 0x00004405 */
++#define DDRCTL_DRAMSET1TMG9		0x0024	/* reset: 0x0004040D */
++#define DDRCTL_DRAMSET1TMG12		0x0030	/* reset: 0x00020000 */
++#define DDRCTL_DRAMSET1TMG13		0x0034	/* reset: 0x1C200004 */
++#define DDRCTL_DRAMSET1TMG14		0x0038	/* reset: 0x000800A0 */
++#define DDRCTL_DRAMSET1TMG23		0x005C	/* reset: 0x00000000 */
++#define DDRCTL_DRAMSET1TMG24		0x0060	/* reset: 0x000F0F0F */
++#define DDRCTL_DRAMSET1TMG25		0x0064	/* reset: 0x00000000 */
++#define DDRCTL_DRAMSET1TMG30		0x0078	/* reset: 0x00000000 */
++
++/* SDRAM initialization MR values for this frequency set (TRM p.592) */
++#define DDRCTL_INITMR0			0x0500	/* reset: 0x00000510 */
++#define DDRCTL_INITMR1			0x0504	/* reset: 0x00000000 */
++#define DDRCTL_INITMR2			0x0508	/* reset: 0x00000000 */
++#define DDRCTL_INITMR3			0x050C	/* reset: 0x00000000 */
++
++/* DFI timing for this frequency set (TRM p.592) */
++#define DDRCTL_DFITMG0			0x0580	/* reset: 0x07020002 */
++#define DDRCTL_DFITMG1			0x0584	/* reset: 0x00000404 */
++#define DDRCTL_DFITMG2			0x0588	/* reset: 0x00000202 */
++#define DDRCTL_DFITMG4			0x0590	/* reset: 0x00000000 */
++#define DDRCTL_DFITMG5			0x0594	/* reset: 0x00000000 */
++#define DDRCTL_DFILPTMG0		0x05A0	/* reset: 0x00000000 */
++#define DDRCTL_DFILPTMG1		0x05A4	/* reset: 0x00000700 */
++#define DDRCTL_DFIUPDTMG0		0x05A8	/* reset: 0x00400003 */
++#define DDRCTL_DFIUPDTMG1		0x05AC	/* reset: 0x00010001 */
++#define DDRCTL_DFIMSGTMG0		0x05B0	/* reset: 0x00000004 */
++
++/* Refresh timing for this frequency set (TRM p.592) */
++#define DDRCTL_RFSHSET1TMG0		0x0600	/* reset: 0x02100062 */
++#define DDRCTL_RFSHSET1TMG1		0x0604	/* reset: 0x0000008C */
++#define DDRCTL_RFSHSET1TMG2		0x0608	/* reset: 0x8C8C0000 */
++#define DDRCTL_RFSHSET1TMG4		0x0610	/* reset: 0x00000000 */
++
++/* ZQ timing for this frequency set (TRM p.592) */
++#define DDRCTL_ZQSET1TMG0		0x0800	/* reset: 0x00400200 */
++#define DDRCTL_ZQSET1TMG1		0x0804	/* reset: 0x02000100 */
++
++/* DQS/WCK oscillator control (per-freq) (TRM p.592) */
++#define DDRCTL_DQSOSCCTL0		0x0A80	/* reset: 0x00000070 */
++
++/* Temperature derate timing (per-freq) (TRM p.592) */
++#define DDRCTL_DERATEINT		0x0B00	/* reset: 0x00800000 */
++#define DDRCTL_DERATEVAL0		0x0B04	/* reset: 0x050F0504 */
++#define DDRCTL_DERATEVAL1		0x0B08	/* reset: 0x00000014 */
++
++/* Hardware low-power timing (per-freq) (TRM p.592) */
++#define DDRCTL_HWLPTMG0			0x0B80	/* reset: 0x00000000 */
++
++/* Scheduler timing (per-freq) (TRM p.592) */
++#define DDRCTL_SCHEDTMG0		0x0C00	/* reset: 0x00000000 */
++#define DDRCTL_PERFHPR1			0x0C80	/* reset: 0x0F000001 */
++#define DDRCTL_PERFLPR1			0x0C84	/* reset: 0x0F00007F */
++#define DDRCTL_PERFWR1			0x0C88	/* reset: 0x0F00007F */
++#define DDRCTL_TMGCFG			0x0D00	/* reset: 0x00000000 */
++#define DDRCTL_RANKTMG0			0x0D04	/* reset: 0x00000606 */
++#define DDRCTL_RANKTMG1			0x0D08	/* reset: 0x00000F0F */
++#define DDRCTL_PWRTMG			0x0D0C	/* reset: 0x00400010 */
++
++/* -----------------------------------------------------------------------
++ * Global/static registers (offsets within DDRCTL address space)
++ * These registers are outside the FREQ banks.  Access via:
++ *   readl(base + DDRCTL_MSTR0), etc.
++ * TRM Part 2 §7.4.2 p.593-594
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRCTL_MSTR0			0x10000	/* reset: 0x03040000 */
++#define DDRCTL_MSTR2			0x10008	/* reset: 0x00000000 */
++#define DDRCTL_MSTR4			0x10010	/* reset: 0x00000000 */
++#define DDRCTL_STAT			0x10014	/* reset: 0x00000000 */
++#define DDRCTL_MRCTRL0			0x10080	/* reset: 0x00000030 */
++#define DDRCTL_MRCTRL1			0x10084	/* reset: 0x00000000 */
++#define DDRCTL_MRSTAT			0x10090	/* reset: 0x00000000 */
++#define DDRCTL_MRRDATA0			0x10094	/* reset: 0x00000000 */
++#define DDRCTL_MRRDATA1			0x10098	/* reset: 0x00000000 */
++#define DDRCTL_DERATECTL0		0x10100	/* reset: 0x00000018 */
++#define DDRCTL_DERATECTL1		0x10104	/* reset: 0x00000000 */
++#define DDRCTL_DERATECTL2		0x10108	/* reset: 0x00000000 */
++#define DDRCTL_DERATECTL5		0x10114	/* reset: 0x00000001 */
++#define DDRCTL_DERATECTL6		0x10118	/* reset: 0x00000000 */
++#define DDRCTL_DERATESTAT0		0x1011C	/* reset: 0x00000000 */
++#define DDRCTL_DERATEDBGCTL		0x10124	/* reset: 0x00000000 */
++#define DDRCTL_DERATEDBGSTAT		0x10128	/* reset: 0x00000000 */
++#define DDRCTL_PWRCTL			0x10180	/* reset: 0x00000000 */
++#define DDRCTL_HWLPCTL			0x10184	/* reset: 0x00000003 */
++#define DDRCTL_CLKGATECTL		0x1018C	/* reset: 0x0000003F */
++#define DDRCTL_RFSHMOD0			0x10200	/* reset: 0x00000000 */
++#define DDRCTL_RFSHCTL0			0x10208	/* reset: 0x00000000 */
++#define DDRCTL_ZQCTL0			0x10280	/* reset: 0x00000000 */
++#define DDRCTL_ZQCTL1			0x10284	/* reset: 0x00000000 */
++#define DDRCTL_ZQCTL2			0x10288	/* reset: 0x00000000 */
++#define DDRCTL_ZQSTAT			0x1028C	/* reset: 0x00000000 */
++#define DDRCTL_DQSOSCRUNTIME		0x10300	/* reset: 0x00400040 */
++#define DDRCTL_DQSOSCSTAT0		0x10304	/* reset: 0x00000000 */
++#define DDRCTL_DQSOSCCFG0		0x10308	/* reset: 0x00000000 */
++#define DDRCTL_SCHED0			0x10380	/* reset: 0x8001201C */
++#define DDRCTL_SCHED1			0x10384	/* reset: 0x00002000 */
++#define DDRCTL_SCHED3			0x1038C	/* reset: 0x04040208 */
++#define DDRCTL_SCHED4			0x10390	/* reset: 0x08400810 */
++#define DDRCTL_DFILPCFG0		0x10500	/* reset: 0x00100000 */
++#define DDRCTL_DFIUPD0			0x10508	/* reset: 0x00008000 */
++#define DDRCTL_DFIMISC			0x10510	/* reset: 0x00000001 */
++#define DDRCTL_DFISTAT			0x10514	/* reset: 0x00000000 */
++#define DDRCTL_DFIPHYMSTR		0x10518	/* reset: 0x80000001 */
++#define DDRCTL_DFI0MSGCTL0		0x10520	/* reset: 0x00000000 */
++#define DDRCTL_DFI0MSGSTAT0		0x10524	/* reset: 0x00000000 */
++#define DDRCTL_POISONCFG		0x10580	/* reset: 0x00110011 */
++#define DDRCTL_POISONSTAT		0x10584	/* reset: 0x00000000 */
++#define DDRCTL_OPCTRL0			0x10B80	/* reset: 0x00000000 */
++#define DDRCTL_OPCTRL1			0x10B84	/* reset: 0x00000000 */
++#define DDRCTL_OPCTRLCAM		0x10B88	/* reset: 0x00000000 */
++#define DDRCTL_OPCTRLCMD		0x10B8C	/* reset: 0x00000000 */
++#define DDRCTL_OPCTRLSTAT		0x10B90	/* reset: 0x00000000 */
++#define DDRCTL_OPREFCTRL0		0x10B98	/* reset: 0x00000000 */
++#define DDRCTL_OPREFSTAT0		0x10BA0	/* reset: 0x00000000 */
++#define DDRCTL_SWCTL			0x10C80	/* reset: 0x00000001 */
++#define DDRCTL_SWSTAT			0x10C84	/* reset: 0x00000001 */
++#define DDRCTL_RANKCTL			0x10C90	/* reset: 0x0000000F */
++#define DDRCTL_DBICTL			0x10C94	/* reset: 0x00000001 */
++#define DDRCTL_ODTMAP			0x10C9C	/* reset: 0x00002211 */
++#define DDRCTL_DATACTL0			0x10CA0	/* reset: 0x00000000 */
++#define DDRCTL_SWCTLSTATIC		0x10CA4	/* reset: 0x00000000 */
++#define DDRCTL_INITTMG0			0x10D00	/* reset: 0x0002004E */
++#define DDRCTL_INITTMG1			0x10D04	/* reset: 0x00000000 */
++
++/* -----------------------------------------------------------------------
++ * AXI port configuration (5 ports, stride 0x1000) (TRM p.594-595)
++ * Port n base = DDRCTL_PORT_BASE(n)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRCTL_PORT_BASE(n)		(0x20000 + (u32)(n) * 0x1000)
++#define DDRCTL_PCCFG_PORT0		0x20000	/* reset: 0x00000000 (port 0 only) */
++#define DDRCTL_PCFGR(n)		(DDRCTL_PORT_BASE(n) + 0x004)	/* reset: 0x0000501F */
++#define DDRCTL_PCFGW(n)		(DDRCTL_PORT_BASE(n) + 0x008)	/* reset: 0x0000501F */
++#define DDRCTL_PCTRL(n)		(DDRCTL_PORT_BASE(n) + 0x090)	/* reset: 0x00000000 */
++#define DDRCTL_PCFGQOS0(n)		(DDRCTL_PORT_BASE(n) + 0x094)	/* reset: 0x00000000 */
++#define DDRCTL_PCFGQOS1(n)		(DDRCTL_PORT_BASE(n) + 0x098)	/* reset: 0x00000000 */
++#define DDRCTL_PCFGWQOS0(n)		(DDRCTL_PORT_BASE(n) + 0x09C)	/* reset: 0x00000E00 */
++#define DDRCTL_PCFGWQOS1(n)		(DDRCTL_PORT_BASE(n) + 0x0A0)	/* reset: 0x00000000 */
++#define DDRCTL_NPORTS			5
++
++/* -----------------------------------------------------------------------
++ * Address map registers (TRM p.595)
++ * -----------------------------------------------------------------------
++ */
++
++#define DDRCTL_ADDRMAP1			0x30004	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP3			0x3000C	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP4			0x30010	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP5			0x30014	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP6			0x30018	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP7			0x3001C	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP8			0x30020	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP9			0x30024	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP10		0x30028	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP11		0x3002C	/* reset: 0x00000000 */
++#define DDRCTL_ADDRMAP12		0x30030	/* reset: 0x00000000 */
++
++/* -----------------------------------------------------------------------
++ * Register field macros — only bits needed for TPL init
++ * TRM Part 2 §7.4.3
++ * -----------------------------------------------------------------------
++ */
++
++/* DDRCTL_MSTR0 */
++#define MSTR0_ACTIVE_RANKS_MASK		GENMASK(27, 24)
++#define MSTR0_ACTIVE_RANKS_1		(0x1 << 24)
++#define MSTR0_ACTIVE_RANKS_2		(0x3 << 24)
++#define MSTR0_BURST_RDWR_MASK		GENMASK(19, 16)
++#define MSTR0_BURST_RDWR_BL16		(0x8 << 16)
++#define MSTR0_LPDDR5			BIT(6)
++#define MSTR0_LPDDR4			BIT(5)
++#define MSTR0_DATA_BUS_WIDTH_MASK	GENMASK(13, 12)
++#define MSTR0_DATA_BUS_WIDTH_FULL	(0x0 << 12)
++#define MSTR0_DATA_BUS_WIDTH_HALF	(0x1 << 12)
++
++/* DDRCTL_STAT */
++#define STAT_OPERATING_MODE_MASK	GENMASK(2, 0)
++#define STAT_OPERATING_MODE_INIT	0
++#define STAT_OPERATING_MODE_NORMAL	1
++#define STAT_OPERATING_MODE_PD		2
++#define STAT_OPERATING_MODE_SR		3
++#define STAT_SELFREF_TYPE_MASK		GENMASK(5, 4)
++#define STAT_SELFREF_TYPE_SR_NOT_AUTO	(2 << 4)
++
++/* DDRCTL_MRCTRL0 (TRM p.635) */
++#define MRCTRL0_MR_WR			BIT(31)
++#define MRCTRL0_MR_ADDR_SHIFT		12
++#define MRCTRL0_MR_RANK_SHIFT		4
++/* sw_init_int [3]: allow SW MRS before auto-init (LPDDR5 step 26) */
++#define MRCTRL0_SW_INIT_INT		BIT(3)
++#define MRCTRL0_MR_TYPE_WR		0
++#define MRCTRL0_MR_TYPE_RD		1
++
++/* DDRCTL_MRSTAT */
++#define MRSTAT_MR_WR_BUSY		BIT(0)
++
++/* DDRCTL_PWRCTL */
++#define PWRCTL_SELFREF_SW		BIT(5)
++#define PWRCTL_SELFREF_EN		BIT(0)
++
++/* DDRCTL_RFSHCTL0 */
++#define RFSHCTL0_DIS_AUTO_REFRESH	BIT(0)
++
++/* DDRCTL_ZQCTL0 */
++#define ZQCTL0_DIS_AUTO_ZQ		BIT(31)
++#define ZQCTL0_DIS_SRX_ZQCL		BIT(30)
++
++/* DDRCTL_DFILPCFG0 */
++#define DFILPCFG0_DFI_LP_EN_SR		BIT(8)
++
++/* DDRCTL_DFIMISC */
++#define DFIMISC_DFI_INIT_COMPLETE_EN	BIT(0)
++#define DFIMISC_DFI_INIT_START		BIT(5)
++
++/* DDRCTL_DFISTAT */
++#define DFISTAT_DFI_INIT_COMPLETE	BIT(0)
++
++/* DDRCTL_DFIPHYMSTR */
++#define DFIPHYMSTR_DFI_PHYMSTR_EN	BIT(0)
++
++/* DDRCTL_OPCTRLCAM */
++#define OPCTRLCAM_DBG_WR_Q_EMPTY	BIT(26)
++#define OPCTRLCAM_DBG_RD_Q_EMPTY	BIT(25)
++
++/* DDRCTL_OPCTRL0 */
++#define OPCTRL0_DIS_HIF			BIT(1)
++
++/* DDRCTL_SWCTL */
++#define SWCTL_SW_DONE			BIT(0)
++
++/* DDRCTL_SWSTAT */
++#define SWSTAT_SW_DONE_ACK		BIT(0)
++
++/* DDRCTL_RANKCTL */
++#define RANKCTL_DIFF_RANK_WR_GAP_MSB	BIT(26)
++#define RANKCTL_DIFF_RANK_RD_GAP_MSB	BIT(24)
++#define RANKCTL_DIFF_RANK_WR_GAP_MASK	GENMASK(11, 8)
++#define RANKCTL_DIFF_RANK_RD_GAP_MASK	GENMASK(7, 4)
++#define RANKCTL_MAX_RANK_RD_MASK	GENMASK(3, 0)
++
++/* DDRCTL_DBICTL */
++#define DBICTL_DM_EN			BIT(2)
++#define DBICTL_WR_DBI_EN		BIT(1)
++#define DBICTL_RD_DBI_EN		BIT(0)
++
++/* DDRCTL_PCTRL */
++#define PCTRL_PORT_EN			BIT(0)
++
++/* DDRCTL_INITTMG0 */
++#define INITTMG0_PRE_CKE_X1024_MASK	GENMASK(19, 0)
++#define INITTMG0_POST_CKE_X1024_MASK	GENMASK(29, 20)
++
++#endif /* _ASM_ARCH_SDRAM_PCTL_RK3576_H */
+-- 
+2.45.1.windows.1
+
