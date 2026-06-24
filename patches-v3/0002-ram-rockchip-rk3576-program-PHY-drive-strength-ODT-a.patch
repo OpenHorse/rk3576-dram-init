@@ -1,0 +1,98 @@
+From a93a1c2f4bf74ce34b94d26bcd228a0544546622 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Wed, 24 Jun 2026 19:19:13 +0200
+Subject: [PATCH 2/4] ram: rockchip: rk3576: program PHY drive strength, ODT
+ and VREF
+
+Program the base operating-point PHY I/O settings (steps 27-28 LP4 /
+31-32 LP5) explicitly instead of relying on the PHY reset defaults, via
+the ZQ_CON drive/ODT/VREF fields. The settings are propagated to the I/O
+by the zq_manual_str pulse in phy_zq_calibrate().
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ drivers/ram/rockchip/sdram_rk3576.c | 60 ++++++++++++++++++++++++++++-
+ 1 file changed, 58 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/ram/rockchip/sdram_rk3576.c b/drivers/ram/rockchip/sdram_rk3576.c
+index 906eaf4fa63..639edc75fec 100644
+--- a/drivers/ram/rockchip/sdram_rk3576.c
++++ b/drivers/ram/rockchip/sdram_rk3576.c
+@@ -141,6 +141,60 @@ static void phy_set_mode(void __iomem *phy, unsigned int dram_type)
+ 			clkmode);
+ }
+ 
++/* -----------------------------------------------------------------------
++ * DDRPHY drive strength / ODT / VREF (TRM §7.6.2 steps 27-28 / §7.6.3 31-32)
++ *
++ * Program the base operating-point PHY I/O settings explicitly instead of
++ * relying on the PHY reset defaults. Field encodings are the PHY_DRV_* and
++ * PHY_ODT_* codes (sdram_phy_rk3576.h). The values are propagated to the
++ * I/O by the zq_manual_str pulse in phy_zq_calibrate().
++ *
++ * Per-DVFS operating points (DVFS0/DVFS1_CON3/CON4) share this field layout
++ * and are added once multi-FSP switching is wired up.
++ * -----------------------------------------------------------------------
++ */
++
++static void phy_set_drv_odt_vref(void __iomem *phy)
++{
++	/*
++	 * Board I/O tuning (group-1 extraction): DQ/CA/CLK driver 30 ohm; PHY
++	 * ODT 60 ohm (ddrbin nominal 40 ohm has no native term code — likely
++	 * realised DRAM-side via MR, TODO verify); VREF internal VSEL 0x14
++	 * (ddrbin per-mil maps via the SSTL table, TODO compute).
++	 */
++	u32 drv = PHY_DRV_30OHM;
++	u32 odt = PHY_ODT_60OHM;
++	u32 vref = 0x14;
++
++	/* ctrl slice drive (pull-up/down) + ODT (DDRPHY_ZQ_CON0) */
++	clrsetbits_le32(phy + DDRPHY_ZQ_CON0,
++			ZQ_CON0_ZQ_MODE_PDDS_MASK | ZQ_CON0_ZQ_MODE_DDS_MASK |
++			ZQ_CON0_ZQ_MODE_TERM_MASK,
++			ZQ_CON0_ZQ_MODE_PDDS(drv) | ZQ_CON0_ZQ_MODE_DDS(drv) |
++			ZQ_CON0_ZQ_MODE_TERM(odt));
++
++	/* CK + data-slice drive (DDRPHY_ZQ_CON3) */
++	clrsetbits_le32(phy + DDRPHY_ZQ_CON3,
++			ZQ_CON3_ZQ_CK_DDS_MASK | ZQ_CON3_ZQ_CK_PDDS_MASK |
++			ZQ_CON3_ZQ_DS1_DDS_MASK | ZQ_CON3_ZQ_DS1_PDDS_MASK |
++			ZQ_CON3_ZQ_DS0_DDS_MASK | ZQ_CON3_ZQ_DS0_PDDS_MASK,
++			ZQ_CON3_ZQ_CK_DDS(drv) | ZQ_CON3_ZQ_CK_PDDS(drv) |
++			ZQ_CON3_ZQ_DS1_DDS(drv) | ZQ_CON3_ZQ_DS1_PDDS(drv) |
++			ZQ_CON3_ZQ_DS0_DDS(drv) | ZQ_CON3_ZQ_DS0_PDDS(drv));
++
++	/* data-slice ODT (DDRPHY_ZQ_CON6) */
++	clrsetbits_le32(phy + DDRPHY_ZQ_CON6,
++			ZQ_CON6_ZQ_DS1_TERM_MASK | ZQ_CON6_ZQ_DS0_TERM_MASK,
++			ZQ_CON6_ZQ_DS1_TERM(odt) | ZQ_CON6_ZQ_DS0_TERM(odt));
++
++	/* data-slice VREF (DDRPHY_ZQ_CON9) and ctrl VREF (DDRPHY_ZQ_CON1) */
++	clrsetbits_le32(phy + DDRPHY_ZQ_CON9,
++			ZQ_CON9_ZQ_DS1_VREF_MASK | ZQ_CON9_ZQ_DS0_VREF_MASK,
++			ZQ_CON9_ZQ_DS1_VREF(vref) | ZQ_CON9_ZQ_DS0_VREF(vref));
++	clrsetbits_le32(phy + DDRPHY_ZQ_CON1,
++			ZQ_CON1_ZQ_VREF_MASK, ZQ_CON1_ZQ_VREF(vref));
++}
++
+ /* -----------------------------------------------------------------------
+  * DDRCTL: write per-frequency timing registers (TRM §7.6.2 step 15)
+  * Must be called for each of the RK3576_DDRCTL_NFREQS frequency sets.
+@@ -481,9 +535,11 @@ static int ddr_init_channel(int ch, void __iomem *ctl, void __iomem *phy,
+ 		;
+ 
+ 	/*
+-	 * Steps 27-28 (LP4) / Steps 31-32 (LP5): vref and ODT settings.
+-	 * Using PHY reset defaults for initial bring-up; no explicit writes.
++	 * Steps 27-28 (LP4) / Steps 31-32 (LP5): PHY drive strength, ODT and
++	 * VREF. Programmed explicitly here; propagated to the I/O by the
++	 * zq_manual_str pulse in phy_zq_calibrate() below.
+ 	 */
++	phy_set_drv_odt_vref(phy);
+ 
+ 	/*
+ 	 * Step 29 (LP4) / Step 33 (LP5): ZQ impedance calibration.
+-- 
+2.45.1.windows.1
+

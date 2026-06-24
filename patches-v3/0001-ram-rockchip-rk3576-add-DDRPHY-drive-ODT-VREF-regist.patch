@@ -1,0 +1,125 @@
+From 8b2783818b4ad9f7c581eb399e42dd94f560f37e Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Wed, 24 Jun 2026 19:18:51 +0200
+Subject: [PATCH 1/4] ram: rockchip: rk3576: add DDRPHY drive/ODT/VREF register
+ definitions
+
+Add drive-strength (dds/pdds), ODT termination (term) and VREF field
+definitions for the base ZQ_CON3/6/9 registers and the per-DVFS
+DVFS{0,1}_CON3/CON4 overrides, including the drive (48/40/34/30 ohm) and
+ODT (60/120/240 ohm) code encodings. Offsets and encodings taken from the
+RK3576 TRM Part 2 (pp.844-845, 860-865).
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ .../asm/arch-rockchip/sdram_phy_rk3576.h      | 96 +++++++++++++++++++
+ 1 file changed, 96 insertions(+)
+
+diff --git a/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h b/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h
+index f6221a5434f..aad615cce9c 100644
+--- a/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h
++++ b/arch/arm/include/asm/arch-rockchip/sdram_phy_rk3576.h
+@@ -360,4 +360,100 @@
+ /* DDRPHY_CAL_FAIL_STAT0 — non-zero means training failed */
+ #define CAL_FAIL_STAT0_ANY_FAIL		GENMASK(31, 0)
+ 
++/* -----------------------------------------------------------------------
++ * DDRPHY drive-strength / ODT / VREF field encodings
++ * (TRM Part 2 pp.844-845 DVFS, pp.860-865 base ZQ)
++ *
++ * Three operating-point register sets share one field layout:
++ *   base ZQ_CON3/6/9 — default frequency point
++ *   DVFS0_CON3/CON4  — DVFS0 point (overrides base zq_ds*_* during DVFS0)
++ *   DVFS1_CON3/CON4  — DVFS1 point
++ *
++ * Drive strength: dds = pull-down, pdds = pull-up, 3-bit per slice (reset 0x7):
++ *   0x4=48ohm 0x5=40ohm 0x6=34ohm 0x7=30ohm.
++ * ODT termination: term, 3-bit per data slice (reset 0x4):
++ *   0x4=60ohm 0x2=120ohm 0x1=240ohm; 0x0 disables.
++ * VREF: 6-bit internal VSEL code (reset 0x14). ddrbin per-mil values map via the
++ *   SSTL VREF table — NOT a 1:1 ohm code (compute, do not copy the per-mil value).
++ *
++ * Reconcile with extracted ddrbin (group 1): PHY data drive 30ohm -> 0x7, CLK/CA
++ * 30ohm -> 0x7 (== reset). Note: extracted phy_*_odt 40ohm has no native term
++ * code (60/120/240) — review whether the blob value is nominal or parallel term.
++ * -----------------------------------------------------------------------
++ */
++
++/* Drive-strength codes (dds / pdds fields) */
++#define PHY_DRV_48OHM			0x4
++#define PHY_DRV_40OHM			0x5
++#define PHY_DRV_34OHM			0x6
++#define PHY_DRV_30OHM			0x7
++/* ODT termination codes (term fields) */
++#define PHY_ODT_OFF			0x0
++#define PHY_ODT_240OHM			0x1
++#define PHY_ODT_120OHM			0x2
++#define PHY_ODT_60OHM			0x4
++
++/* DDRPHY_ZQ_CON0 (0x03C8) ctrl slice — drive + ODT (TRM p.860) */
++#define ZQ_CON0_ZQ_MODE_PDDS_MASK	GENMASK(30, 28)	/* ctrl pull-up drv */
++#define ZQ_CON0_ZQ_MODE_PDDS(x)		((x) << 28)
++#define ZQ_CON0_ZQ_CLK_EN		BIT(27)
++#define ZQ_CON0_ZQ_MODE_DDS_MASK	GENMASK(26, 24)	/* ctrl pull-down drv */
++#define ZQ_CON0_ZQ_MODE_DDS(x)		((x) << 24)
++#define ZQ_CON0_ZQ_MODE_TERM_MASK	GENMASK(23, 21)	/* ctrl ODT */
++#define ZQ_CON0_ZQ_MODE_TERM(x)		((x) << 21)
++
++/* DDRPHY_ZQ_CON1 (0x03CC) ctrl slice VREF (TRM p.862) */
++#define ZQ_CON1_ZQ_VREF_MASK		GENMASK(21, 16)
++#define ZQ_CON1_ZQ_VREF(x)		((x) << 16)
++
++/* DDRPHY_ZQ_CON3 (0x03D4) CK + data-slice drive strength (TRM p.862) */
++#define ZQ_CON3_ZQ_CK_DDS_MASK		GENMASK(21, 19)
++#define ZQ_CON3_ZQ_CK_DDS(x)		((x) << 19)
++#define ZQ_CON3_ZQ_CK_PDDS_MASK		GENMASK(18, 16)
++#define ZQ_CON3_ZQ_CK_PDDS(x)		((x) << 16)
++#define ZQ_CON3_ZQ_DS1_DDS_MASK		GENMASK(13, 11)
++#define ZQ_CON3_ZQ_DS1_DDS(x)		((x) << 11)
++#define ZQ_CON3_ZQ_DS1_PDDS_MASK	GENMASK(10, 8)
++#define ZQ_CON3_ZQ_DS1_PDDS(x)		((x) << 8)
++#define ZQ_CON3_ZQ_DS0_DDS_MASK		GENMASK(5, 3)
++#define ZQ_CON3_ZQ_DS0_DDS(x)		((x) << 3)
++#define ZQ_CON3_ZQ_DS0_PDDS_MASK	GENMASK(2, 0)
++#define ZQ_CON3_ZQ_DS0_PDDS(x)		((x) << 0)
++
++/* DDRPHY_ZQ_CON6 (0x03E0) data-slice ODT (TRM p.864) */
++#define ZQ_CON6_ZQ_DS1_TERM_MASK	GENMASK(13, 11)
++#define ZQ_CON6_ZQ_DS1_TERM(x)		((x) << 11)
++#define ZQ_CON6_ZQ_DS0_TERM_MASK	GENMASK(5, 3)
++#define ZQ_CON6_ZQ_DS0_TERM(x)		((x) << 3)
++
++/* DDRPHY_ZQ_CON9 (0x03EC) data-slice VREF (TRM p.865) */
++#define ZQ_CON9_ZQ_DS1_VREF_MASK	GENMASK(13, 8)	/* io_zq_ds_vref[11:6] */
++#define ZQ_CON9_ZQ_DS1_VREF(x)		((x) << 8)
++#define ZQ_CON9_ZQ_DS0_VREF_MASK	GENMASK(5, 0)	/* io_zq_ds_vref[5:0] */
++#define ZQ_CON9_ZQ_DS0_VREF(x)		((x) << 0)
++
++/* Per-DVFS drive + VREF — DDRPHY_DVFS{0,1}_CON3 (0x00D4 / 0x00D8) (TRM p.844) */
++#define DVFS_CON3_DS1_VREF_MASK		GENMASK(31, 26)
++#define DVFS_CON3_DS1_VREF(x)		((x) << 26)
++#define DVFS_CON3_DS0_VREF_MASK		GENMASK(25, 20)
++#define DVFS_CON3_DS0_VREF(x)		((x) << 20)
++#define DVFS_CON3_ZQ_MODE_DDS_MASK	GENMASK(17, 15)
++#define DVFS_CON3_ZQ_MODE_DDS(x)	((x) << 15)
++#define DVFS_CON3_ZQ_MODE_PDDS_MASK	GENMASK(14, 12)
++#define DVFS_CON3_ZQ_MODE_PDDS(x)	((x) << 12)
++#define DVFS_CON3_ZQ_DS1_DDS_MASK	GENMASK(11, 9)
++#define DVFS_CON3_ZQ_DS1_DDS(x)		((x) << 9)
++#define DVFS_CON3_ZQ_DS1_PDDS_MASK	GENMASK(8, 6)
++#define DVFS_CON3_ZQ_DS1_PDDS(x)	((x) << 6)
++#define DVFS_CON3_ZQ_DS0_DDS_MASK	GENMASK(5, 3)
++#define DVFS_CON3_ZQ_DS0_DDS(x)		((x) << 3)
++#define DVFS_CON3_ZQ_DS0_PDDS_MASK	GENMASK(2, 0)
++#define DVFS_CON3_ZQ_DS0_PDDS(x)	((x) << 0)
++
++/* Per-DVFS ODT — DDRPHY_DVFS{0,1}_CON4 (0x00DC / 0x00E0) (TRM p.845) */
++#define DVFS_CON4_ZQ_DS1_TERM_MASK	GENMASK(21, 19)
++#define DVFS_CON4_ZQ_DS1_TERM(x)	((x) << 19)
++#define DVFS_CON4_ZQ_DS0_TERM_MASK	GENMASK(18, 16)
++#define DVFS_CON4_ZQ_DS0_TERM(x)	((x) << 16)
++
+ #endif /* _ASM_ARCH_SDRAM_PHY_RK3576_H */
+-- 
+2.45.1.windows.1
+

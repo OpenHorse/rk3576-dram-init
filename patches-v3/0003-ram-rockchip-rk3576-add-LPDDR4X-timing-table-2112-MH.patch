@@ -1,0 +1,196 @@
+From db7f1f64e17c7ed26b2b23a79ffaa0a94973ceb6 Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Wed, 24 Jun 2026 19:19:35 +0200
+Subject: [PATCH 3/4] ram: rockchip: rk3576: add LPDDR4X timing table (2112
+ MHz)
+
+Add an LPDDR4X timing table for the 2112 MHz operating point with the
+per-FSP frequency ladder (528/1068/1560/2112). Controller timing registers
+are TRM reset placeholders pending JEDEC/SRS calculation; the extracted
+PHY I/O tuning and address-hash values are documented in the file header.
+
+Signed-off-by: Johan Axelsson <johan.axelsson@proton.me>
+---
+ .../rockchip/sdram-rk3576-lpddr4x-2112.inc    | 170 ++++++++++++++++++
+ 1 file changed, 170 insertions(+)
+ create mode 100644 drivers/ram/rockchip/sdram-rk3576-lpddr4x-2112.inc
+
+diff --git a/drivers/ram/rockchip/sdram-rk3576-lpddr4x-2112.inc b/drivers/ram/rockchip/sdram-rk3576-lpddr4x-2112.inc
+new file mode 100644
+index 00000000000..7adf0bbcaaa
+--- /dev/null
++++ b/drivers/ram/rockchip/sdram-rk3576-lpddr4x-2112.inc
+@@ -0,0 +1,170 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * RK3576 LPDDR4X timing table — CK = 2112 MHz (data rate LPDDR4X-4224).
++ *
++ * FIRST CUT. The frequency ladder, PHY drive/ODT/VREF, address-hash masks and
++ * feature flags documented below are REAL values extracted from the shipped
++ * Rockchip DDR blob rk3576_ddr_lp4_2112MHz_lp5_2736MHz_v1.13.bin (ddrbin
++ * parameter block, ADC group 1 — identical across all 12 groups) using
++ * tools/ddr-extract/. They are board-tuning DATA, not reverse-engineered code.
++ *
++ * STILL PLACEHOLDER — every DDRCTL timing field below holds TRM reset values
++ * and MUST be recomputed from JEDEC JESD209-4D + the Synopsys uMCTL2 SRS before
++ * hardware bring-up. The blob parameter block does NOT carry these:
++ *   DRAMSET1TMG*  (tRAS/tRC/tFAW/wr2pre/...), DFITMG*, RFSHSET1TMG* (tRFC needs
++ *   die density), INITMR* (RL/WL/BL + VREF MRs), ZQSET1TMG*, RANKTMG*.
++ *
++ * Extracted board profile (group 1, LPDDR4X):
++ *   boot type       : LPDDR4X, dual channel (channel mask = 3, stride = 3)
++ *   FSP ladder MHz  : f1=528  f2=1068  f3=1560  f0/final=2112  (map low->high)
++ *   ODT enable freq : DQ and CA ODT enabled above 800 MHz
++ *   PHY drive  (ohm): DQ=30  CA=30  CLK=30          (phy_lp4x_*_drv)
++ *   PHY ODT    (ohm): 40                            (phy_lp4x_odt)
++ *   DRAM drive (ohm): DQ=40                          (lp4x_dq_drv)
++ *   DRAM ODT   (ohm): DQ=40  CA=80                   (lp4x_odt / lp4x_ca_odt)
++ *   VREF (per-mil)  : DQ odten=228 odtoff=500; CA odten=366 odtoff=500;
++ *                     PHY DQ VREF odten=249 odtoff=400
++ *   bank-hash mask  : 0x800 / 0x1000 / 0x2000  (3 bits -> 8 banks)
++ *   rank-hash mask  : 0x400000                 (1 bit at HIF[22])
++ *   CA skew / swap  : none (straight PCB routing)
++ *   flags           : derate_en=1 per_bank_ref_en=1 zq_check=on
++ *                     pd_idle=13 sr_idle=0 periodic training ~1s
++ *
++ * The PHY drive/ODT/VREF and address-map values are not yet representable in
++ * struct rk3576_ddrctl_freq_params / global_params / cap_info. They are recorded
++ * above so the PHY register definitions (sdram_phy_rk3576.h) and the ADDRMAP
++ * programming can consume them once added. See docs/rkbin-param-gap-analysis.md.
++ */
++
++/*
++ * Per-FSP controller timing. All four banks currently share TRM reset values;
++ * each must be recomputed for its own operating point (see FSP ladder above).
++ */
++#define LP4X_2112_FREQ_TMG						\
++{									\
++	/* SDRAM timing set 1 — TRM reset; recompute per FSP frequency. */\
++	.dramset1tmg0  = 0x0F101B0F,	/* t_ras/t_faw/wr2pre placeholder */\
++	.dramset1tmg1  = 0x00080414,					\
++	.dramset1tmg2  = 0x0305060D,					\
++	.dramset1tmg3  = 0x00040404,					\
++	.dramset1tmg4  = 0x05040405,					\
++	.dramset1tmg5  = 0x05050403,					\
++	.dramset1tmg6  = 0x00000005,					\
++	.dramset1tmg7  = 0x00000000,					\
++	.dramset1tmg8  = 0x00004405,					\
++	.dramset1tmg9  = 0x0004040D,					\
++	.dramset1tmg12 = 0x00020000,					\
++	.dramset1tmg13 = 0x1C200004,					\
++	.dramset1tmg14 = 0x000800A0,					\
++	.dramset1tmg23 = 0x00000000,					\
++	.dramset1tmg24 = 0x000F0F0F,					\
++	.dramset1tmg25 = 0x00000000,					\
++	.dramset1tmg30 = 0x00000000,					\
++	/* MR init — TODO: encode RL/WL/BL + VREF (MR14/12) for this FSP. */\
++	.initmr0 = 0x00000510,						\
++	.initmr1 = 0x00000000,						\
++	.initmr2 = 0x00000000,						\
++	.initmr3 = 0x00000000,						\
++	/* DFI timing — TRM reset; needs tDFI_* for the RK3576 combo PHY. */\
++	.dfitmg0    = 0x07020002,					\
++	.dfitmg1    = 0x00000404,					\
++	.dfitmg2    = 0x00000202,					\
++	.dfitmg4    = 0x00000000,					\
++	.dfitmg5    = 0x00000000,					\
++	.dfilptmg0  = 0x00000000,					\
++	.dfilptmg1  = 0x00000700,					\
++	.dfiupdtmg0 = 0x00400003,					\
++	.dfiupdtmg1 = 0x00010001,					\
++	.dfimsgtmg0 = 0x00000004,					\
++	/* Refresh — TODO: t_rfc_min from LP4X die density. */		\
++	.rfshset1tmg0 = 0x02100062,					\
++	.rfshset1tmg1 = 0x0000008C,					\
++	.rfshset1tmg2 = 0x8C8C0000,					\
++	.rfshset1tmg4 = 0x00000000,					\
++	.zqset1tmg0 = 0x00400200,					\
++	.zqset1tmg1 = 0x02000100,					\
++	.perfhpr1 = 0x0F000001,						\
++	.perflpr1 = 0x0F00007F,						\
++	.perfwr1  = 0x0F00007F,						\
++	.ranktmg0 = 0x00000606,						\
++	.ranktmg1 = 0x00000F0F,						\
++	/* PWRTMG — TODO: encode extracted pd_idle=13, sr_idle=0. */	\
++	.pwrtmg   = 0x00400010,						\
++}
++
++{
++	.ch = {
++		[0] = {
++			.cap_info = {
++				/*
++				 * Geometry: 8 banks confirmed by the 3 bank-hash
++				 * mask bits; dual channel. col/row/rank still need
++				 * the actual DRAM part datasheet — TODO before HW.
++				 */
++				.rank              = 1,
++				.col               = 10,
++				.bk                = 3,	/* 8 banks (matches mask) */
++				.bw                = 2,
++				.dbw               = 1,
++				.row_3_4           = 0,
++				.cs0_row           = 16,
++				.cs1_row           = 16,
++				.cs0_high16bit_row = 0,
++				.cs1_high16bit_row = 0,
++				.ddrconfig         = 0,
++			},
++		},
++		[1] = {
++			.cap_info = {
++				.rank              = 1,
++				.col               = 10,
++				.bk                = 3,
++				.bw                = 2,
++				.dbw               = 1,
++				.row_3_4           = 0,
++				.cs0_row           = 16,
++				.cs1_row           = 16,
++				.cs0_high16bit_row = 0,
++				.cs1_high16bit_row = 0,
++				.ddrconfig         = 0,
++			},
++		},
++	},
++	.base = {
++		.ddr_freq     = 2112,	/* CK MHz; final FSP. data rate 4224 MT/s */
++		.dramtype     = LPDDR4X,
++		.num_channels = 2,	/* extracted: channel mask = 3 */
++		.stride       = 3,	/* extracted: stride type = 3 */
++		.odt          = 1,
++	},
++	.freq = {
++		[0] = LP4X_2112_FREQ_TMG,	/* FSP f1 =  528 MHz */
++		[1] = LP4X_2112_FREQ_TMG,	/* FSP f2 = 1068 MHz */
++		[2] = LP4X_2112_FREQ_TMG,	/* FSP f3 = 1560 MHz */
++		[3] = LP4X_2112_FREQ_TMG,	/* FSP f0 = 2112 MHz (boot/final) */
++	},
++	.ctl = {
++		/*
++		 * MSTR0: LPDDR4/4X share the uMCTL2 lpddr4 mode (BIT5).
++		 * 1 rank (bits[25:24]=0x1), BL16 (bits[19:16]=0x8), full bus.
++		 */
++		.mstr0      = 0x01080020,
++		.rankctl    = 0x0000000F,
++		.dbictl     = 0x00000001,
++		.odtmap     = 0x00002211,
++		.inittmg0   = 0x0002004E,
++		.inittmg1   = 0x00000000,
++		.rfshmod0   = 0x00000000,
++		.sched0     = 0x8001201C,
++		.sched1     = 0x00002000,
++		.sched3     = 0x04040208,
++		.sched4     = 0x08400810,
++		.dfilpcfg0  = 0x00100000,
++		.dfiupd0    = 0x00008000,
++		.dfiphymstr = 0x80000001,
++		.zqctl0     = 0x00000000,
++		.zqctl1     = 0x00000000,
++	},
++},
++
++#undef LP4X_2112_FREQ_TMG
+-- 
+2.45.1.windows.1
+

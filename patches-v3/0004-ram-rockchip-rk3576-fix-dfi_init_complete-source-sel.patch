@@ -1,0 +1,76 @@
+From df746a5910d1304f411a111b3bbfff553b10fcea Mon Sep 17 00:00:00 2001
+From: Johan Axelsson <johan.axelsson@proton.me>
+Date: Wed, 24 Jun 2026 22:29:48 +0200
+Subject: [PATCH 4/4] ram: rockchip: rk3576: fix dfi_init_complete source
+ select
+
+---
+ .../include/asm/arch-rockchip/sdram_rk3576.h  |  7 +++++-
+ drivers/ram/rockchip/sdram_rk3576.c           | 24 ++++++++++++-------
+ 2 files changed, 21 insertions(+), 10 deletions(-)
+
+diff --git a/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h b/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h
+index bdeaf9b3c38..7bd7ca76252 100644
+--- a/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h
++++ b/arch/arm/include/asm/arch-rockchip/sdram_rk3576.h
+@@ -91,7 +91,12 @@
+ #define GRF_CHA_DDRPHY_CON0		0x0020
+ #define GRF_CHB_DDRPHY_CON0		0x0120
+ #define DDRPHY_CON0_DFI_INIT_COMP_SEL_MASK	GENMASK(5, 4)
+-#define DDRPHY_CON0_DFI_INIT_COMP_FROM_PHY	(0x1 << 4)
++/*
++ * Select DDR_GRF as the dfi_init_complete source (TRM step 31/35): set
++ * bit[5] first, then bit[4]. The restore (step 34/38) clears bit[4] only.
++ */
++#define DDRPHY_CON0_DFI_INIT_COMP_SEL5		BIT(5)
++#define DDRPHY_CON0_DFI_INIT_COMP_SEL4		BIT(4)
+ 
+ /* Number of FREQ sets supported by DDRCTL */
+ #define RK3576_DDRCTL_NFREQS		4
+diff --git a/drivers/ram/rockchip/sdram_rk3576.c b/drivers/ram/rockchip/sdram_rk3576.c
+index 639edc75fec..8bce3eccb46 100644
+--- a/drivers/ram/rockchip/sdram_rk3576.c
++++ b/drivers/ram/rockchip/sdram_rk3576.c
+@@ -98,14 +98,18 @@ static void grf_dfi_init_comp_sel(void __iomem *grf, int ch, int from_grf)
+ 
+ 	if (from_grf) {
+ 		/*
+-		 * TRM step 31: set bit[5] first, then bit[4].
+-		 * Both bits together select the GRF-driven path.
++		 * TRM step 31/35: set bit[5] first, then bit[4], to source
++		 * dfi_init_complete from DDR_GRF. Required because the
++		 * following MDLL ctrl_dll_on=1 momentarily pulls
++		 * dfi_init_complete low, which would otherwise confuse DDRCTL.
+ 		 */
+-		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL_MASK,
+-			      DDRPHY_CON0_DFI_INIT_COMP_FROM_PHY);
++		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL5,
++			      DDRPHY_CON0_DFI_INIT_COMP_SEL5);
++		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL4,
++			      DDRPHY_CON0_DFI_INIT_COMP_SEL4);
+ 	} else {
+-		/* Step 34: clear bit[4] to restore DDRCTL DFI output */
+-		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL_MASK, 0);
++		/* Step 34/38: clear bit[4] only to restore DDRCTL DFI output */
++		grf_writemask(grf, reg, DDRPHY_CON0_DFI_INIT_COMP_SEL4, 0);
+ 	}
+ }
+ 
+@@ -665,9 +669,11 @@ int sdram_init(void)
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = ddr_init_channel(1, ctl1, phy1, grf, params);
+-	if (ret)
+-		return ret;
++	if (params->base.num_channels > 1) {
++		ret = ddr_init_channel(1, ctl1, phy1, grf, params);
++		if (ret)
++			return ret;
++	}
+ 
+ 	/* Store DRAM geometry in PMU1GRF OS_REG2/3 for SPL and Linux. */
+ 	for (ch = 0; ch < params->base.num_channels; ch++)
+-- 
+2.45.1.windows.1
+
