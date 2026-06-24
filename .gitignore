@@ -1,8 +1,8 @@
 u-boot/
 
-# Rockchip proprietary TRM documents (not redistributable)
-docs/trm/*.docx
-docs/trm/*.pdf
+# Rockchip proprietary TRM documents and extracts (not redistributable).
+# The driver cites TRM page numbers; the documents themselves stay local.
+docs/trm/
 
 # DDR extraction working data — blob-derived, not redistributed.
 # Regenerate locally with tools/ddr-extract/ (see its README).
