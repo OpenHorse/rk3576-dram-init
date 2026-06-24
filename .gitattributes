@@ -1,0 +1,9 @@
+# Normalise tracked text files to LF in the repository. Prevents CRLF churn
+# from Windows editors silently rewriting files (which otherwise shows up as
+# huge whitespace-only diffs, e.g. on docs/trm/*.txt and docs/mainline-status.md).
+* text=auto eol=lf
+
+# Binary / proprietary docs (also gitignored) are never normalised.
+*.pdf  binary
+*.docx binary
+*.bin  binary
