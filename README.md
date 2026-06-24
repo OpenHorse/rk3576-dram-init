@@ -21,7 +21,8 @@ patches you apply on top of it.
 ```
 .
 ├── patches/         RFC v1 series (against mainline U-Boot)
-├── patches-v2/      RFC v2 series (current)
+├── patches-v2/      RFC v2 series
+├── patches-v3/      RFC v3 series (current) — PHY drive/ODT/VREF, LP4X table, fixes
 ├── docs/
 │   ├── mainline-status.md            RK3576 kernel enablement status (context)
 │   ├── rk3576-ddr-research.md        DDR subsystem notes
@@ -60,7 +61,7 @@ target board (the ArmSoM Sige5 is a convenient compile/test target), e.g.:
 ```bash
 git clone https://source.denx.de/u-boot/u-boot.git
 cd u-boot
-git am ../rk3576-dram-init/patches-v2/*.patch
+git am ../rk3576-dram-init/patches-v3/*.patch
 
 export CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64
 make sige5-rk3576_defconfig
