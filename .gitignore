@@ -3,3 +3,12 @@ u-boot/
 # Rockchip proprietary TRM documents (not redistributable)
 docs/trm/*.docx
 docs/trm/*.pdf
+
+# DDR extraction working data — blob-derived, not redistributed.
+# Regenerate locally with tools/ddr-extract/ (see its README).
+tools/ddr-extract/rkbin-2/
+tools/ddr-extract/extracted/
+tools/ddr-extract/__pycache__/
+tools/ddr-extract/*.bin
+tools/ddr-extract/rk3576-*-extracted.txt
+tools/ddr-extract/rk3576-*-clean.txt
