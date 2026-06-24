@@ -68,7 +68,7 @@ make sige5-rk3576_defconfig
 make -j"$(nproc)"
 size tpl/u-boot-tpl          # TPL must fit in SRAM
 
-scripts/checkpatch.pl --strict ../rk3576-dram-init/patches-v2/*.patch
+scripts/checkpatch.pl --strict ../rk3576-dram-init/patches-v3/*.patch
 ```
 
 There is no meaningful emulation path for DRAM training — real hardware is
